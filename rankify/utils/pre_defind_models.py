@@ -15,6 +15,7 @@ HF_PRE_DEFIND_MODELS ={
         'gpt2-medium':'openai-community/gpt2-medium',
         'gpt2-large':'openai-community/gpt2-large',
         'gpt2-xl':'openai-community/gpt2-xl',
+        'flan-t5-xl': "google/flan-t5-xl"
         
     },
     'rankgpt-api':{
@@ -161,8 +162,7 @@ HF_PRE_DEFIND_MODELS ={
     'lit5score':{
         "LiT5-Score-base":	"castorini/LiT5-Score-base",
         "LiT5-Score-large":	"castorini/LiT5-Score-large",
-        "LiT5-Score-xl":	"castorini/LiT5-Score-xl",
-        
+        "LiT5-Score-xl":	"castorini/LiT5-Score-xl",    
     },
     'vicuna_reranker':{
         "rank_vicuna_7b_v1": "castorini/rank_vicuna_7b_v1",
@@ -199,7 +199,7 @@ HF_PRE_DEFIND_MODELS ={
         
     },
     'colbert_ranker':{
-        "Colbert": "colbert-ir/colbertv2.0",
+        "colbertv2.0": "colbert-ir/colbertv2.0",
         "FranchColBERT": "bclavie/FraColBERTv2",
         "JapanColBERT": "bclavie/JaColBERTv2",
         "SpanishColBERT": "AdrienB134/ColBERTv2.0-spanish-mmarcoES",
@@ -221,7 +221,8 @@ HF_PRE_DEFIND_MODELS ={
         "Sheared-LLaMA": "McGill-NLP/LLM2Vec-Sheared-LLaMA-mntp"
     },
     'twolar':{
-        'twolar-xl':"Dundalia/TWOLAR-xl"
+        'twolar-xl':"Dundalia/TWOLAR-xl",
+        'twolar-large':"Dundalia/TWOLAR-large"
     },
     'echorank':{
         'flan-t5-large' : 'google/flan-t5-large',
