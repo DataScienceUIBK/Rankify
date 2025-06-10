@@ -1,5 +1,7 @@
 import os
 import json
+from pathlib import Path
+
 import requests
 import zipfile
 from typing import List
@@ -8,6 +10,7 @@ from pyserini.eval.evaluate_dpr_retrieval import has_answers, SimpleTokenizer
 from rankify.dataset.dataset import Document, Context
 from tqdm import tqdm
 from transformers import AutoTokenizer
+from pyserini.search.lucene import LuceneSearcher
 
 tokenizer = AutoTokenizer.from_pretrained("facebook/dpr-question_encoder-multiset-base")
 
@@ -77,7 +80,8 @@ class DenseRetriever:
         "bpr-single": "castorini/bpr-nq-question-encoder"
     }
 
-    def __init__(self, model: str = "dpr-multi", index_type: str = "wiki", n_docs: int = 10, batch_size: int = 36, threads: int = 30):
+    def __init__(self, model: str = "dpr-multi", index_type: str = "wiki", n_docs: int = 10, batch_size: int = 36, threads: int = 30,
+                 index_folder: str = ''):
         """
         Initializes the **DenseRetriever** for batch processing.
 
@@ -104,11 +108,18 @@ class DenseRetriever:
         self.batch_size = batch_size
         self.threads = threads
         self.tokenizer = SimpleTokenizer()
+        self.index_folder = index_folder
 
         # Load the appropriate searcher
         self.searcher = self._initialize_searcher()
+
+        if index_folder and index_type != "wiki":
+            self.load_corpus()
+            return
+
         if index_type == "msmarco":
             self._load_msmarco_corpus()
+
     def _initialize_searcher(self):
         """
         Initializes the FAISS searcher for document retrieval.
@@ -117,6 +128,18 @@ class DenseRetriever:
             FaissSearcher: A **FAISS searcher** instance.
         """
         index_url_or_prebuilt = self.DENSE_INDEX_MAP[self.model][self.index_type]
+
+        if self.index_folder:
+            # If a local index folder is provided, use it directly
+            print(f"Initializing FaissSearcher with local index folder: {self.index_folder}...")
+            if self.index_type == "wiki":
+                print("Using LuceneSearcher for wiki index...")
+                return LuceneSearcher(self.index_folder)
+            else:
+                print("Using FaissSearcher for index...")
+                if not os.path.exists(self.index_folder):
+                    raise ValueError(f"Index folder '{self.index_folder}' does not exist.")
+                return FaissSearcher(self.index_folder, self.QUERY_ENCODER_MAP[self.model])
 
         if index_url_or_prebuilt.startswith("http"):  # Handle downloadable indexes
             index_folder_name = os.path.basename(index_url_or_prebuilt).split("?")[0].replace(".zip", "")
@@ -134,6 +157,22 @@ class DenseRetriever:
         else:  # Handle prebuilt indexes from Pyserini
             print(f"Initializing FaissSearcher with prebuilt index: {index_url_or_prebuilt}...")
             return FaissSearcher.from_prebuilt_index(index_url_or_prebuilt, self.QUERY_ENCODER_MAP[self.model])
+
+    def load_corpus(self):
+        """
+        Loads the **corpus** into memory.
+        """
+        corpus_file = Path(self.index_folder) / "corpus.jsonl"
+
+        print("Loading corpus...")
+        self.corpus = {}
+        with open(corpus_file, "r", encoding="utf-8") as f:
+            for line in f:
+                doc = json.loads(line.strip())
+                doc_id = doc.get("docid") or doc.get("id")
+                contents = doc.get("contents", "")
+                title = doc.get("title", contents[:100] if contents else "No Title")
+                self.corpus[str(doc_id)] = {"contents": contents, "title": title}
 
     def _load_msmarco_corpus(self):
         """
@@ -162,6 +201,7 @@ class DenseRetriever:
             for line in f:
                 doc_id, text, title = line.strip().split("\t")
                 self.corpus[doc_id] = {"text": text, "title": title}
+
     def _download_file(self, url, save_path):
         """
         Downloads a file from the specified URL and saves it to the given path.
@@ -242,8 +282,8 @@ class DenseRetriever:
                 try:
                     if self.index_type == "msmarco":
                         doc_id = hit.docid
-                        doc_data = self.corpus.get(doc_id, {"text": "Not Found", "title": "Not Found"})
-                        text = doc_data["text"]
+                        doc_data = self.corpus.get(str(doc_id), {"contents": "Not Found", "title": "Not Found"})
+                        text = doc_data["contents"]
                         title = doc_data["title"]
                     else:
                         # Handle 'wiki' index

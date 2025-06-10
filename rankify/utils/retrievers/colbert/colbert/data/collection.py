@@ -28,6 +28,10 @@ class Collection:
         # TODO: Load here too. Basically, let's make data a property function and, on first call, either load or get __data.
         return len(self.data)
 
+    def __str__(self):
+        preview = self.data[:3] if len(self.data) > 3 else self.data
+        return f"Collection(path={self.path}, num_docs={len(self.data)}, preview={preview})"
+
     def _load_file(self, path):
         self.path = path
         return self._load_tsv(path) if path.endswith('.tsv') else self._load_jsonl(path)

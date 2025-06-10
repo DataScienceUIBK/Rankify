@@ -46,7 +46,7 @@ class BM25Retriever:
         print(retrieved_documents[0].contexts[0].text)
         ```
     """
-    def __init__(self,model="bm25", n_docs: int = 10, batch_size: int = 36, threads: int = 30 , index_type: str = 'wiki') -> None:
+    def __init__(self, model="bm25", n_docs: int = 10, batch_size: int = 36, threads: int = 30 , index_type: str = 'wiki', index_folder: str = '') -> None:
         """
         Initializes the BM25 retriever.
 
@@ -69,20 +69,29 @@ class BM25Retriever:
             raise ValueError(f"Index type {index_type} is not supported.")
         
         self.index_type = index_type
-        self.index_url = INDEX_TYPE['bm25'][index_type]['url']
-        self.index_folder = os.path.join(os.environ.get("RERANKING_CACHE_DIR", "./cache"), 'index',  f"bm25_index_{index_type}")
+
+        # If a custom local index folder is provided, use it; else default to cached folder
+        if index_folder:
+            self.index_folder = index_folder
+        else:
+            self.index_url = INDEX_TYPE['bm25'][index_type]['url']
+            self.index_folder = os.path.join(os.environ.get("RERANKING_CACHE_DIR", "./cache"), 'index', f"bm25_index_{index_type}")
+
         if index_type =="wiki":
             self.index_path =  os.path.join(self.index_folder, f"bm25_index")
         else:
             self.index_path =  os.path.join(self.index_folder, f"bm25_index_{index_type}")
-            
+
         self.title_map_path = os.path.join(self.index_path, "corpus.json")
 
 
-        self._ensure_index_downloaded()
+        # TODO: Check if still supported in future
+        # self._ensure_index_downloaded()
+
         self.searcher = LuceneSearcher(self.index_path)
-        with open(self.title_map_path, "r", encoding="utf-8") as f:
-            self.pid2title = json.load(f)
+        #Todo: remove
+        #with open(self.title_map_path, "r", encoding="utf-8") as f:
+            #self.pid2title = json.load(f)
 
     def _ensure_index_downloaded(self) -> None:
         """
@@ -151,6 +160,7 @@ class BM25Retriever:
                 print(f"Error retrieving contexts for query '{query}': {e}")
 
         return documents
+
     def retrieve(self, documents: List[Document]) -> List[Document]:
         """
         Retrieves **relevant contexts** for each document in the input list using BM25.
@@ -178,11 +188,14 @@ class BM25Retriever:
             for hit in hits:
                 try:
                     lucene_doc = self.searcher.doc(hit.docid)
-                    raw_content = json.loads(lucene_doc.raw())  # Parse the raw JSON
-                    #print(raw_content)
-                    text = raw_content.get("contents", "")
-                    title = self.pid2title.get(hit.docid, "No Title")
+                    raw_content = json.loads(lucene_doc.raw())
 
+                    content = raw_content.get("contents", "")
+                    has_title = '\n' in content
+                    title = content.split('\n')[0] if has_title else "No Title"
+                    text = content.split('\n')[1] if has_title else content
+
+                    #Todo: Change id type from int to str
                     context = Context(
                         id=int(hit.docid),
                         title=title,

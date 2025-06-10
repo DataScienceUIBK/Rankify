@@ -946,6 +946,49 @@ print(generated_answers)  # Output: ["Paris"]
 ```
 
 ---
+## CLI - Running Indexing Module
+
+Rankify provides a command-line interface (CLI) for indexing documents.\
+You can create an index from a JSONL file containing documents, specifying the retriever and other parameters.
+
+### BM25
+
+``` bash
+rankify-index index data/wikipedia_10k.jsonl --retriever bm25 --output rankify_indices
+```
+
+### DPR
+
+wiki
+``` bash
+rankify-index index data/wikipedia_100.jsonl --retriever dpr --output rankify_indices
+```
+
+msmarco
+``` bash
+rankify-index index data/msmarco_100.jsonl --retriever dpr --output rankify_indices --index_type msmarco
+```
+
+
+### Contriever
+
+``` bash
+rankify-index index data/wikipedia_100.jsonl --retriever contriever --output rankify_indices/contriever
+```
+
+### ColBERT
+
+``` bash
+rankify-index index data/wikipedia_100.jsonl --retriever colbert --output rankify_indices/colbert
+```
+
+### BGE
+
+``` bash
+rankify-index index data/wikipedia_100.jsonl --retriever bge --output rankify_indices/bg
+```
+
+---
 ## 5️⃣ Evaluating with Metrics  
 
 Rankify provides built-in **evaluation metrics** for **retrieval, re-ranking, and retrieval-augmented generation (RAG)**. These metrics help assess the quality of retrieved documents, the effectiveness of ranking models, and the accuracy of generated answers.  

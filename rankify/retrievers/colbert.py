@@ -1,20 +1,16 @@
 
 import os
-import json
 import requests
 import zipfile
 from tqdm import tqdm
-from urllib.parse import urlparse
 from typing import List
 from rankify.utils.retrievers.colbert.colbert.infra import Run, RunConfig, ColBERTConfig
 from rankify.utils.retrievers.colbert.colbert import Searcher
 from rankify.dataset.dataset import Document, Context
 from pyserini.eval.evaluate_dpr_retrieval import has_answers, SimpleTokenizer
 from rankify.utils.pre_defind_models import INDEX_TYPE
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse
 
-
-import subprocess
 
 class ColBERTRetriever:
     """
@@ -54,7 +50,8 @@ class ColBERTRetriever:
     """
     CACHE_DIR = os.environ.get("RERANKING_CACHE_DIR", "./cache")
 
-    def __init__(self, model: str ="colbert-ir/colbertv2.0" , index_type: str = "wiki", n_docs: int = 10, batch_size=64):
+    def __init__(self, model: str ="colbert-ir/colbertv2.0" , index_type: str = "wiki", n_docs: int = 10, batch_size=64,
+                 index_folder: str = ""):
         """
         Initializes the **ColBERTRetriever**.
 
@@ -73,13 +70,17 @@ class ColBERTRetriever:
         self.index_type = index_type
         self.n_docs = n_docs
         self.tokenizer = SimpleTokenizer()
+        self.index_folder = index_folder
 
         if 'colbert' not in INDEX_TYPE or index_type not in INDEX_TYPE['colbert']:
             raise ValueError(f"Index type '{index_type}' is not supported for ColBERT.")
 
         self.index_config = INDEX_TYPE['colbert'][index_type]
         self.passages_url = self.index_config.get("passages_url")
-        self._ensure_index_and_passages_downloaded()
+        if not self.index_folder:
+            self._ensure_index_and_passages_downloaded()
+        else:
+            self.passages_file = os.path.join(self.index_folder, "passages.tsv")
         self._initialize_searcher()
 
         self.passages = {}
@@ -200,11 +201,11 @@ class ColBERTRetriever:
         #self.co
         with Run().context(RunConfig(nranks=1, experiment="colbert")):
             config = ColBERTConfig(
-                root=os.path.join(self.CACHE_DIR, "index", "colbert", self.index_type),
-                index_path=self.index_config['passages_url'],
+                root=self.index_folder if self.index_folder else os.path.join(self.CACHE_DIR, "index", "colbert", self.index_type),
+                index_path=self.index_folder if self.index_folder else self.index_config['passages_url'],
                 collection=self.passages_file
             )
-            print(config.collection)
+            #print(config.collection)
             #config.collection = self.passages_file
             self.searcher = Searcher(index=config.root, config=config)
 
@@ -230,6 +231,7 @@ class ColBERTRetriever:
                 pid = str(pid)  # Ensure the ID is a string
                 if pid in self.passages:  # Check if the ID exists in the passages dictionary
                     passage = self.passages[pid]
+                    #Todo: also here Change type to str of Context
                     context = Context(
                         id=pid,
                         title=passage["title"],
