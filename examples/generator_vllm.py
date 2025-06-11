@@ -15,7 +15,7 @@ contexts = [
 doc = Document(question=question, answers=answers, contexts=contexts)
 
 # Define sampling parameters for vllm
-sampling_params = SamplingParams(temperature=0.7, top_p=0.9, max_tokens=100)
+sampling_params = SamplingParams(temperature=0.9, top_p=0.9, max_tokens=100)
 
 # Initialize Generator (e.g., Meta Llama)
 generator = Generator(method="basic-rag", model_name='mistralai/Mistral-7B-v0.1', backend="vllm", dtype="float16")
