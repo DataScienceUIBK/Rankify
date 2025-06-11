@@ -17,7 +17,7 @@ fschat[model_worker]>=0.2.36
 llm-blender==0.0.2
 sentence_transformers==3.3.0
 flash-attn==2.5.0
-pyserini==0.43.0
+pyserini==0.44.0
 faiss-cpu==1.9.0.post1
 omegaconf==2.3.0
 h5py==3.12.1

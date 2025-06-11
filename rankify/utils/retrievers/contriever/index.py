@@ -60,7 +60,7 @@ class Indexer(object):
         print(f'Loading index from {index_file}, meta data from {meta_file}')
 
         self.index = faiss.read_index(index_file)
-        print('Loaded index of type %s and size %d', type(self.index), self.index.ntotal)
+        print(f'Loaded index of type {type(self.index)} and size {self.index.ntotal}')
 
         with open(meta_file, "rb") as reader:
             self.index_id_to_db_id = pickle.load(reader)

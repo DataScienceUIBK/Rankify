@@ -56,7 +56,8 @@ class BGERetriever:
     """
     CACHE_DIR = os.environ.get("RERANKING_CACHE_DIR", "./cache")
 
-    def __init__(self, model="BAAI/bge-large-en-v1.5", n_docs=10, batch_size=32, device="cuda", index_type="wiki"):
+    def __init__(self, model="BAAI/bge-large-en-v1.5", n_docs=10, batch_size=32, device="cuda", index_type="wiki",
+                 index_folder=''):
         """
         Initializes the **BGE Retriever**.
 
@@ -80,14 +81,21 @@ class BGERetriever:
             raise ValueError(f"Index type '{index_type}' is not supported for BGERetriever.")
 
         self.index_config = INDEX_TYPE['bge'][index_type]
-        self.index_folder = os.path.join(self.CACHE_DIR, "index", f"bgb_index_{index_type}")
-        self.passages_url = self.index_config.get("passages_url")
-        self.passage_path = None
+        if not index_folder:
+            self.index_folder = os.path.join(self.CACHE_DIR, "index", f"bgb_index_{index_type}")
+            self.passages_url = self.index_config.get("passages_url")
+            self.passage_path = None
 
-        self._ensure_index_and_passages_downloaded()
-        self.doc_ids = self._load_document_ids()
-        self.doc_texts = self._load_tsv()
-        self.build_faiss_index_on_disk()
+            self._ensure_index_and_passages_downloaded()
+            self.doc_ids = self._load_document_ids()
+            self.doc_texts = self._load_tsv()
+            self.build_faiss_index_on_disk()
+        else:
+            self.index_folder = index_folder
+            self.passage_path = os.path.join(self.index_folder, 'passages.tsv')
+            self.doc_ids = self._load_document_ids()
+            self.doc_texts = self._load_tsv()
+            self.build_faiss_index_on_disk()
 
         # Load model and tokenizer
         self.model_hf = AutoModel.from_pretrained(self.model_name).to(self.device).eval()

@@ -103,6 +103,8 @@ dev = [
   "ipython"
 ]
 
+[project.scripts]
+rankify-index = "rankify.cli.cli:main"
 
 
 [project.urls]

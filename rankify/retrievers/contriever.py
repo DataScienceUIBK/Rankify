@@ -1,10 +1,7 @@
 import os
-import json
 import requests
-import tarfile
 import numpy as np
 import torch
-import faiss
 from tqdm import tqdm
 from typing import List
 from rankify.utils.retrievers.contriever.index import Indexer
@@ -12,14 +9,14 @@ from rankify.utils.retrievers.contriever.normalize_text import normalize
 
 from rankify.utils.retrievers.contriever.data import load_passages
 from rankify.utils.retrievers.contriever.contriever import load_retriever
-from rankify.dataset.dataset import Document, Context, Question, Answer
+from rankify.dataset.dataset import Document, Context
 import pickle
 from pyserini.eval.evaluate_dpr_retrieval import has_answers, SimpleTokenizer
 import glob
 from rankify.utils.pre_defind_models import INDEX_TYPE
 import tarfile
 import zipfile
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse
 
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
@@ -68,7 +65,7 @@ class ContrieverRetriever:
                  model: str = "facebook/contriever-msmarco",  #
                  n_docs: int = 100, 
                  batch_size: int = 32, 
-                 device: str = "cuda", index_type: str = "wiki") -> None:
+                 device: str = "cuda", index_type: str = "wiki", index_folder: str = "") -> None:
         """
         Initializes the **ContrieverRetriever**.
 
@@ -93,9 +90,13 @@ class ContrieverRetriever:
         self.index_config = INDEX_TYPE['contriever'][index_type]
         self.passages_url = self.index_config.get("passages_url", None)
         self.embeddings_url = self.index_config.get("url", None)
+        self.index_folder = index_folder
 
-        
-        self._ensure_index_and_passages_downloaded()
+        if self.index_folder:
+            self.passage_path = os.path.join(self.index_folder, "corpus.jsonl")
+        else:
+            self._ensure_index_and_passages_downloaded()
+
         self.index = self._load_index()
         self.passages = load_passages(self.passage_path)
         self.passage_id_map = {int(x["id"]): x for x in self.passages}
@@ -176,14 +177,19 @@ class ContrieverRetriever:
             Indexer: The loaded **FAISS index**.
         """
         index = Indexer(vector_sz=768 , n_subquantizers=0,n_bits=8)  # Update vector size if necessary
-        index_folder = os.path.join(self.EMBEDDINGS_DIR, self.index_type)
-        if self.index_type =="wiki":
-            index_folder = os.path.join( index_folder, "wikipedia_embeddings")
-    
+
+        if not self.index_folder:
+            index_folder = os.path.join(self.EMBEDDINGS_DIR, self.index_type)
+
+            if self.index_type =="wiki":
+                index_folder = os.path.join( index_folder, "wikipedia_embeddings")
+        else:
+            index_folder = self.index_folder
         
         index_path = os.path.join(index_folder, "index.faiss")
-        embeddings_files = glob.glob(index_folder+"/*")
+        embeddings_files = glob.glob(os.path.join(index_folder, "*.pkl"))
         embeddings_files = sorted(embeddings_files)
+
         if os.path.exists(index_path):
             index.deserialize_from(index_folder)
         else:
@@ -271,19 +277,21 @@ class ContrieverRetriever:
         queries = [doc.question.question.replace("?","") for doc in documents]
         query_embeddings = self._embed_queries(queries)
         top_ids_and_scores = self.index.search_knn(query_embeddings, self.n_docs, index_batch_size=self.batch_size) #
-        
+
         for i, document in enumerate(tqdm(documents, desc="Processing documents", unit="doc")):
             top_ids, scores = top_ids_and_scores[i]
             contexts = []
             for doc_id, score in zip(top_ids, scores):
                 try:
+                    #TODO: change when str type is supported
+                    doc_id = str(doc_id).replace("doc", "")
                     passage = self.passage_id_map[int(doc_id)]
                     context = Context(
                         id=int(doc_id),
                         title=passage["title"],
-                        text=passage["text"],
+                        text=passage.get("contents", passage.get("text", "")),
                         score=score,
-                        has_answer=has_answers(passage["text"], document.answers.answers, SimpleTokenizer(), regex=False)  # Could be updated with a function to check for answers
+                        has_answer=has_answers(passage["contents"], document.answers.answers, SimpleTokenizer(), regex=False)  # Could be updated with a function to check for answers
                     )
                     contexts.append(context)
                 except (IndexError, KeyError):

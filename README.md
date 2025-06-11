@@ -58,11 +58,12 @@ https://github.com/user-attachments/assets/13184943-55db-4f0c-b509-fde920b809bc
 - [Roadmap](#-roadmap)
 - [Installation](#-installation)
 - [Quick Start](#rocket-quick-start)
+- [Indexing](#cli-running-indexing-module)
 - [Retrievers](#2️⃣-running-retrieval)
 - [Re-Rankers](#3️⃣-running-reranking)
 - [Generators](#4️⃣-using-generator-module)
 - [Evaluation](#5️⃣-evaluating-with-metrics)
-- [Documentation](#-documentation)
+- [Documentation](#📖-documentation)
 - [Community Contributing](#-Community-Contributions)
 - [Contributing](#-contributing)
 - [License](#bookmark-license)
@@ -72,6 +73,8 @@ https://github.com/user-attachments/assets/13184943-55db-4f0c-b509-fde920b809bc
 
 
 ## 🎉News
+
+- **[2025-06-11]** Many thanks to [@tobias124](https://github.com/tobias124) for implementing [Indexing](#cli-running-indexing-module) for Custom Dataset.
 
 - **[2025-06-01]** Many thanks to [@aherzinger](https://github.com/aherzinger) for implementing and refactoring the Generator and RAG models.
 
@@ -943,6 +946,49 @@ generator = Generator(method="basic-rag", model_name='ollama/mistral', backend="
 # Generate answer
 generated_answers = generator.generate([doc])
 print(generated_answers)  # Output: ["Paris"]
+```
+
+---
+## CLI Running Indexing Module
+
+Rankify provides a command-line interface (CLI) for indexing documents.\
+You can create an index from a JSONL file containing documents, specifying the retriever and other parameters.
+
+### BM25
+
+``` bash
+rankify-index index data/wikipedia_10k.jsonl --retriever bm25 --output rankify_indices
+```
+
+### DPR
+
+wiki
+``` bash
+rankify-index index data/wikipedia_100.jsonl --retriever dpr --output rankify_indices
+```
+
+msmarco
+``` bash
+rankify-index index data/msmarco_100.jsonl --retriever dpr --output rankify_indices --index_type msmarco
+```
+
+
+### Contriever
+
+``` bash
+rankify-index index data/wikipedia_100.jsonl --retriever contriever --output rankify_indices/contriever
+```
+
+### ColBERT
+
+``` bash
+rankify-index index data/wikipedia_100.jsonl --retriever colbert --output rankify_indices/colbert
+```
+
+### BGE
+
+``` bash
+rankify-index index data/wikipedia_100.jsonl --retriever bge --output rankify_indices/bg
 ```
 
 ---
