@@ -98,8 +98,10 @@ class WebSearchTool(Tool):
 
     def forward(self, query: str,num_result:int=10):
         sources = self.search_client.search_web(query=query,num_results=num_result)
-        print(sources)
+        #print(sources, len(sources.data['organic']), num_result)
 
+        
+        #asdadsasdad
         try:
             loop = asyncio.get_event_loop()
             if loop.is_running():

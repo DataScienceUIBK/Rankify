@@ -3,6 +3,8 @@ from typing import Optional
 from crawl4ai.extraction_strategy import (
     LLMExtractionStrategy,
     NoExtractionStrategy,
+    JsonCssExtractionStrategy,
+    JsonXPathExtractionStrategy,
     CosineStrategy,
     create_llm_config
 )
@@ -51,3 +53,25 @@ class StrategyFactory:
             max_dist=max_dist,
             verbose=debug
         )
+    @staticmethod
+    def create_css_strategy() -> JsonCssExtractionStrategy:
+        schema = {
+            "baseSelector": ".product",
+            "fields": [
+                {"name": "title", "selector": "h1.product-title", "type": "text"},
+                {"name": "price", "selector": ".price", "type": "text"},
+                {"name": "description", "selector": ".description", "type": "text"},
+            ],
+        }
+        return JsonCssExtractionStrategy(schema=schema)
+    @staticmethod
+    def create_xpath_strategy() -> JsonXPathExtractionStrategy:
+        schema = {
+            "baseSelector": "//div[@class='product']",
+            "fields": [
+                {"name": "title", "selector": ".//h1[@class='product-title']/text()", "type": "text"},
+                {"name": "price", "selector": ".//span[@class='price']/text()", "type": "text"},
+                {"name": "description", "selector": ".//div[@class='description']/text()", "type": "text"},
+            ],
+        }
+        return JsonXPathExtractionStrategy(schema=schema)
