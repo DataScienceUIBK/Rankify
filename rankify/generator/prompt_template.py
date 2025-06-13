@@ -15,7 +15,7 @@ DEFAULT_PROMPTS = {
         "Answer:"
     ),
     PromptTemplate.CHAIN_OF_THOUGHT_RAG: (
-        "You are a helpful assistant. Think step by step and then answer concisely.\n"
+        "You are a helpful assistant. Think step by step and then answer concisely with only the answer, since I want to evaluate it that is my best option to get it without explanation.\n"
         "Question: {question}\n"
         "Contexts:\n{contexts}\n"
         "Let's think step by step.\nAnswer:"

@@ -21,8 +21,6 @@ class PromptGenerator:
             contexts = []
         context_str = "\n".join(contexts)
         if custom_prompt:
-            print(custom_prompt.format(question=question, contexts=context_str))
             return custom_prompt.format(question=question, contexts=context_str)
         template = DEFAULT_PROMPTS[self.prompt_template]
-        print(template.format(question=question, contexts=context_str))
         return template.format(question=question, contexts=context_str)

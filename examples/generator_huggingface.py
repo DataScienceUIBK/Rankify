@@ -15,7 +15,7 @@ contexts = [
 doc = Document(question=question, answers=answers, contexts=contexts)
 
 # Initialize Generator (e.g., Meta Llama)
-generator = Generator(method="zero-shot", model_name='meta-llama/Meta-Llama-3.1-8B-Instruct', backend="huggingface", torch_dtype=torch.float16)
+generator = Generator(method="chain-of-thought-rag", model_name='meta-llama/Meta-Llama-3.1-8B-Instruct', backend="huggingface", torch_dtype=torch.float16)
 
 # Generate answer
 generated_answers = generator.generate([doc])
