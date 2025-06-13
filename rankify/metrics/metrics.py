@@ -76,6 +76,7 @@ class BaseMetric:
         Returns:
             list: List of ground-truth answers.
         """
+        print(data.documents[0].answers)
         return [doc.answers.answers for doc in data.documents]
 
 

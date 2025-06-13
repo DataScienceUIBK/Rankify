@@ -13,7 +13,7 @@ datasets = ["web_questions-test"]
 for name in datasets:
     print("*" * 100)
     print(name)
-    dataset = Dataset('bm25', name, 100)
+    dataset = Dataset('bm25', name, 5)
     documents = dataset.download(force_download=False)
 
     # Limit to a small subset for fast evaluation
@@ -21,7 +21,8 @@ for name in datasets:
     documents = documents[:N]
 
     print(len(documents[0].contexts), documents[0].answers)
-
+    print(len(documents[0].answers.answers))
+    #asdads
     #make the predictions:
     # Initialize Generator (e.g., Meta Llama)
     # generator = Generator(method="basic-rag", model_name='meta-llama/Meta-Llama-3.1-8B-Instruct', backend="huggingface", torch_dtype=torch.float16)
@@ -32,15 +33,16 @@ for name in datasets:
     generator = Generator(method="basic-rag", model_name='mistralai/Mistral-7B-v0.1', backend="vllm", dtype="float16")
 
     # Generate answer
-    results = generator.generate(documents=documents, sampling_params=sampling_params)
+    generated_answers = generator.generate(documents=documents, sampling_params=sampling_params)
 
     # Extract generated answer strings
-    generated_answers = [output[0].outputs[0].text.strip() for output in results]
+    #generated_answers = [output[0].outputs[0].text.strip() for output in results]
+    
 
 
 #    results = generator.generate(documents=documents)
 
-    print(generated_answers)
+    #print(generated_answers)
 
     metrics = Metrics(documents)
 

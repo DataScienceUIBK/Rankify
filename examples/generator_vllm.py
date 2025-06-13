@@ -23,6 +23,8 @@ generator = Generator(method="basic-rag", model_name='mistralai/Mistral-7B-v0.1'
 # Generate answer
 generated_answers = generator.generate([doc],sampling_params=sampling_params)
 
-output = generated_answers[0][0]
-print(output.prompt.strip())
-print(output.outputs[0].text.strip())  # Output: ["Paris"]
+# Print the generated answers
+print(generated_answers) 
+#output = generated_answers[0][0]
+#print(output.prompt.strip())
+#print(output.outputs[0].text.strip())  # Output: ["Paris"]
