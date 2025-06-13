@@ -34,7 +34,6 @@ DEFAULT_PROMPTS = {
     PromptTemplate.ZERO_SHOT: (
         "Answer the following question using only the provided context.\n"
         "Question: {question}\n"
-        "Context:\n{contexts}\n"
         "Answer:"
     ),
 }

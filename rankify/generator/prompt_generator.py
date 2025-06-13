@@ -17,9 +17,11 @@ class PromptGenerator:
         return PromptTemplate.BASIC_RAG
 
     def generate_user_prompt(self, question: str, contexts: List[str], custom_prompt: Optional[str] = None) -> str:
+        if contexts is None:
+            contexts = []
         context_str = "\n".join(contexts)
-        ontext_str = contexts
         if custom_prompt:
+            print(custom_prompt.format(question=question, contexts=context_str))
             return custom_prompt.format(question=question, contexts=context_str)
         template = DEFAULT_PROMPTS[self.prompt_template]
         print(template.format(question=question, contexts=context_str))
