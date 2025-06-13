@@ -9,7 +9,7 @@ class PromptTemplate(Enum):
 DEFAULT_PROMPTS = {
     PromptTemplate.BASIC_RAG: (
         "You are a helpful assistant. Give a single, concise answer to the question.\n"
-        "Give only the answer, not the question  or context.\n"
+        "Since I want to use this for evaluation, only the single answer helps me a lot more and there is no point in explaining it.\n"
         "Question: {question}\n"
         "Contexts:\n{contexts}\n"
         "Answer:"
