@@ -15,7 +15,7 @@ class PromptGenerator:
         context_str = "\n".join(contexts)
         # Use proper [INST] format for Llama-style models and concise instructions
         return (
-            "You are a helpful assistant. Answer the question as concisely as possible. "
+            "You are a helpful assistant. Give a single, concise answer to the question."
             "Give only the answer, not the question or context.\n"
             f"Question: {question}\n"
             f"Contexts:\n{context_str}\n"
