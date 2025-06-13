@@ -31,7 +31,7 @@ class FiDRAGMethod(BaseRAGMethod):
     def __init__(self, model: BaseRAGModel):
         self.model = model
 
-    def answer_questions(self, documents: List[Document], **kwargs) -> List[str]:
+    def answer_questions(self, documents: List[Document], custom_prompt=None, **kwargs) -> List[str]:
         """
         Answer questions for a list of documents using the model.
 
