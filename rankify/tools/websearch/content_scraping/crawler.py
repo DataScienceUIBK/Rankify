@@ -15,28 +15,49 @@ from rankify.tools.websearch.content_scraping.config import ExtractionConfig
 
 
 class WebScraper:
-
-    def __init__(self,browser_config:Optional[BrowserConfig]=None,strategies : List[str]= ['no_extraction'],llm_instruction:str="Extract relevant content from the provided text, only return the text, no markdown formatting, remove all footnotes, citations, and other metadata and only keep the main content",
-                 query:Optional[str]=None,filter_content:bool=False):
+    #'markdown_llm', 'html_llm','fit_markdown_llm','css', 'xpath','cosine'
+    def __init__(self,browser_config:Optional[BrowserConfig]=None,strategies : List[str]= [   'no_extraction', ],llm_instruction:str="Extract relevant content from the provided text, only return the text, no markdown formatting, remove all footnotes, citations, and other metadata and only keep the main content",
+                 query:Optional[str]=None,filter_content:bool=True):
         self.browser_config = browser_config
         self.strategies = strategies
         self.llm_instruction = llm_instruction
         self.query = query
         self.filter_content = filter_content
         self.strategy_factory = StrategyFactory()
-        valid_strategies = {'markdown_llm', 'html_llm', 'fit_markdown_llm', 'css', 'xpath', 'no_extraction', 'cosine'}
+        valid_strategies = {  'no_extraction', } #'markdown_llm', 'html_llm', 'fit_markdown_llm','css', 'xpath','cosine'
         invalid_strategies = set(strategies) - valid_strategies
         if invalid_strategies:
             raise ValueError(f"Invalid strategies: {invalid_strategies}")
         self.strategy_map = {
             'markdown_llm': lambda : self.strategy_factory.create_llm_strategy(),
+            'fit_markdown_llm': lambda: self.strategy_factory.create_llm_strategy('fit_markdown', self.llm_instruction),
+            'html_llm': lambda: self.strategy_factory.create_llm_strategy('html', self.llm_instruction),
             'cosine': lambda:self.strategy_factory.create_cosine_strategy(),
             'no_extraction': lambda:self.strategy_factory.create_no_extraction_strategy(),
+            'css': self.strategy_factory.create_css_strategy,
+            'xpath': self.strategy_factory.create_xpath_strategy,
         }
 
-    def _create_crawler_config(self):
+    def _create_crawler_config_old(self):
         filter_content = PruningContentFilter(user_query=self.query) if self.query else PruningContentFilter()
         return CrawlerRunConfig(cache_mode=CacheMode.BYPASS,markdown_generator=DefaultMarkdownGenerator(content_filter=filter_content))
+    def _create_crawler_config(self):
+        prune_filter = PruningContentFilter(
+            # Lower → more content retained, higher → more content pruned
+            threshold=0.45,           
+            # "fixed" or "dynamic"
+            threshold_type="dynamic",  
+            # Ignore nodes with <5 words
+            min_word_threshold=5      
+        )
+        # Step 2: Insert it into a Markdown Generator
+        md_generator = DefaultMarkdownGenerator(content_filter=prune_filter)
+
+        # Step 3: Pass it to CrawlerRunConfig
+        config = CrawlerRunConfig(
+            markdown_generator=md_generator
+        )
+        return config
 
     async def extract(self, extraction_config: ExtractionConfig, url: str) -> ScrapedResult:
             """ Method to perform extraction using a strategy(e.g., markdown strategy)"""
@@ -44,16 +65,21 @@ class WebScraper:
             try:
                 config = self._create_crawler_config()
                 config.extraction_strategy = extraction_config.strategy
-
-                async with AsyncWebCrawler(config=self.browser_config) as crawler:
+                #config=self.browser_config
+                async with AsyncWebCrawler() as crawler:
                     if isinstance(url, list):
                         results = await crawler.arun_many(urls=url, config=config)
                     else:
                         results = await crawler.arun(url=url, config=config)
-
-
+                    # print(results.success)
+                    # print(results.markdown.fit_markdown)
+                    # print("*" * 80)
+                    # print(results.markdown.raw_markdown)
+                    # ddddd
                 content = None
+                fit_markdown = None
                 if results.success:
+                    print(extraction_config.name)
                     if extraction_config.name in ['no_extraction', 'cosine']:
                         if hasattr(results, 'markdown'):
                             content = results.markdown.raw_markdown
@@ -64,19 +90,24 @@ class WebScraper:
                                 content = '\n'.join(item.get('content', '') for item in results.extracted_content)
                             else:
                                 content = results.extracted_content
+                        if hasattr(results.markdown, 'fit_markdown'):
+                            fit_markdown = results.markdown.fit_markdown
                         if self.filter_content and content:
                             from rankify.tools.websearch.content_scraping.utils import filter_quality_content
                             content = filter_quality_content(content)
 
+                        #asdasdasdasd
                     else:
                         content = results.extracted_content
                         from rankify.tools.websearch.content_scraping.utils import filter_quality_content
                         content = filter_quality_content(content)
-
+                print(f"Content extracted: {content[:100]}...")  # Debug print
+                print(f"Fit markdown: {fit_markdown[:100]}...")  # Debug print
                 extracted_result = ScrapedResult(
                     name=extraction_config.name,
                     success=results.success,
                     content=content,
+                    fit_markdown = fit_markdown,
                     error=getattr(results, 'error', None)
                 )
                 if results.success:
@@ -97,14 +128,14 @@ class WebScraper:
         logger.info(f"Scraping {url}")
         results = {}
         # Handle Wikipedia URLs
-        if 'wikipedia.org/wiki/' in url:
-            from rankify.tools.websearch.content_scraping.utils import get_wikipedia_content
-            try:
-                content = get_wikipedia_content(url)
-                results['no_extraction'] = ScrapedResult(name='no_extraction', success=True, content=content)
+        # if 'wikipedia.org/wiki/' in url:
+        #     from rankify.tools.websearch.content_scraping.utils import get_wikipedia_content
+        #     try:
+        #         content = get_wikipedia_content(url)
+        #         results['no_extraction'] = ScrapedResult(name='no_extraction', success=True, content=content)
                
-            except Exception as e:
-                raise ValueError(f"Debug: Wikipedia extraction failed {str(e)}")
+        #     except Exception as e:
+        #         raise ValueError(f"Debug: Wikipedia extraction failed {str(e)}")
         
         for strategy_name in self.strategies:
             config = ExtractionConfig(
@@ -124,7 +155,7 @@ class WebScraper:
         results = {}
         for url, result in zip(urls, results_list):
             results[url] = result
-
+            print(f"Scraped {url} with results: {result}")
         return results
 
 async def main():

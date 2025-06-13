@@ -23,7 +23,8 @@ class SerperApiClient(SearchAPIClient):
 
     def search_web(self,query:str,num_results:int = 10 , search_location:Optional[str]=None) -> SerpResult[
         Dict[str, Any]]:
-
+        
+        
         if not query.strip():
             return SerperAPIException(error=f"query is required")
         try:
