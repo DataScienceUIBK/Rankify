@@ -76,9 +76,18 @@ class BaseMetric:
         Returns:
             list: List of ground-truth answers.
         """
-        print(data.documents[0].answers)
-        return [doc.answers.answers for doc in data.documents]
-
+        answers_list = []
+        for doc in data.documents:
+            ans = doc.answers
+            if hasattr(ans, "answers"):
+                answers_list.append(ans.answers)
+            elif isinstance(ans, (list, tuple)):
+                answers_list.append(list(ans))
+            elif isinstance(ans, str):
+                answers_list.append([ans])
+            else:
+                answers_list.append([str(ans)])
+        return answers_list
 
 ### **Generation Metrics (Exact Match, F1, Precision, Recall, BLEU)**
 
