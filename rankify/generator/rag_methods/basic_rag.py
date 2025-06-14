@@ -33,7 +33,4 @@ class BasicRAG(BaseRAGMethod):
             
             # Append the answer to the list
             answers.append(answer)
-
-            document.answers = answer
-
         return answers
