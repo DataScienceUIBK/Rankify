@@ -2,6 +2,8 @@ from rankify.dataset.dataset import Document, Question, Answer, Context
 from rankify.generator.generator import Generator
 import torch
 
+from rankify.models.sentence_transformer_reranker import SentenceTransformerReranker
+
 # Define a more ambiguous question and answer placeholder
 question = Question("Which city is the cultural capital of the United States?")
 answers = Answer("")
@@ -38,12 +40,16 @@ contexts = [
 # Construct document
 doc = Document(question=question, answers=answers, contexts=contexts)
 
+
+reranker = SentenceTransformerReranker(method="sentence_transformer_reranker", model_name="all-MiniLM-L6-v2")
+
 generator = Generator(
     method="self-consistency-rag",
     model_name='meta-llama/Meta-Llama-3.1-8B-Instruct',
     backend="huggingface",
     torch_dtype=torch.float16,
-    num_samples=7  # Number of samples for self-consistency
+    num_samples=7,  # Number of samples for self-consistency
+    reranker=reranker,  # Optional reranker for better answer selection
 )
 
 generated_answers = generator.generate([doc])

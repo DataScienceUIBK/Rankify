@@ -1,17 +1,18 @@
-from typing import List
+from typing import List, Optional
 from collections import Counter
 from rankify.generator.models.base_rag_model import BaseRAGModel
-from rankify.dataset.dataset import Document
+from rankify.dataset.dataset import Document, Answer
 from rankify.generator.rag_methods.base_rag_method import BaseRAGMethod
 
 class SelfConsistencyRAG(BaseRAGMethod):
-    def __init__(self, model: BaseRAGModel, num_samples: int = 5, **kwargs):
+    def __init__(self, model: BaseRAGModel, num_samples: int = 5, reranker=None, **kwargs):
         self.model = model
         self.num_samples = num_samples
+        self.reranker = reranker  # Optional: pass a reranker instance
 
-    def answer_questions(self, documents: List[Document], custom_prompt=None, **kwargs) -> List[str]:
+    def answer_questions(self, documents: List[Document], custom_prompt: Optional[str] = None, **kwargs) -> List[str]:
         """
-        For each document, generate multiple answers and aggregate by majority vote.
+        For each document, generate multiple answers and aggregate by majority vote or reranker.
         """
         answers = []
         for document in documents:
@@ -32,7 +33,23 @@ class SelfConsistencyRAG(BaseRAGMethod):
                 sample_answers = [sample_answers]
 
             print(f"Generated {len(sample_answers)} samples: {sample_answers}")
-            # Majority vote
-            most_common, _ = Counter([ans.strip() for ans in sample_answers]).most_common(1)[0]
-            answers.append(most_common)
+
+            # Use reranker if provided, otherwise majority vote
+            if self.reranker:
+                rerank_docs = []
+                for ans in sample_answers:
+                    doc = Document(question=document.question, answers=Answer(answers=[ans]), contexts=document.contexts)
+                    rerank_docs.append(doc)
+                reranked = self.reranker.rank(rerank_docs)
+                best_answer = reranked[0].answers.answers
+                if isinstance(best_answer, list):
+                    best_answer = best_answer[0]
+                answers.append(best_answer)
+            else:
+                # Majority vote (with normalization)
+                def normalize(text):
+                    return text.lower().strip()
+                normalized = [normalize(ans) for ans in sample_answers]
+                most_common, _ = Counter(normalized).most_common(1)[0]
+                answers.append(most_common)
         return answers
