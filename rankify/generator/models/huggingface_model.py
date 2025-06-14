@@ -25,25 +25,29 @@ class HuggingFaceModel(BaseRAGModel):
         self.model = model
         self.prompt_generator = prompt_generator
 
-    def generate(self, prompt: str, **kwargs) -> str:
-        """Generate a response using Hugging Face's model and return only the answer."""
+    def generate(self, prompt: str, **kwargs):
+        """Generate a response using Hugging Face's model and return only the answer(s)."""
         inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
-        
+
         kwargs.setdefault("max_new_tokens", 32)
         kwargs.setdefault("do_sample", True)
         kwargs.setdefault("num_return_sequences", 1)
         kwargs.setdefault("eos_token_id", self.tokenizer.eos_token_id)
         kwargs.setdefault("pad_token_id", self.tokenizer.eos_token_id)
-        
-        #kwargs.setdefault("temperature", 0.1)
-        #kwargs.setdefault("top_p", 0.9)
-        #kwargs.setdefault("num_return_sequences", 1)
 
         outputs = self.model.generate(**inputs, **kwargs)
-        # Decode the full generated sequence
-        generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-        # Remove the prompt from the generated text to get only the answer
-        answer = generated_text[len(prompt):].strip()
-        # Optionally, take only the first line if the answer is multi-line
-        answer = answer.split("\n")[0].strip()
-        return answer
+
+    # If multiple sequences requested, decode all
+        if kwargs.get("num_return_sequences", 1) > 1:
+            answers = []
+            for output in outputs:
+                generated_text = self.tokenizer.decode(output, skip_special_tokens=True)
+                answer = generated_text[len(prompt):].strip()
+                answer = answer.split("\n")[0].strip()
+                answers.append(answer)
+            return answers
+        else:
+            generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+            answer = generated_text[len(prompt):].strip()
+            answer = answer.split("\n")[0].strip()
+            return answer
