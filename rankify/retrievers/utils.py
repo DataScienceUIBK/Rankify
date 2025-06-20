@@ -41,11 +41,27 @@ def process_chunk(chunk_lines, start_idx, dense_index=False):
 
             raw_id = doc.get("id")
             #Todo: replace doc can be removed when str is supported as type
-            doc_id = (
-                int(raw_id.replace("doc", "")) if isinstance(raw_id, str) and raw_id.startswith("doc")
-                else int(raw_id) if raw_id
-                else start_idx + i
-            )
+            # doc_id = (
+            #     int(raw_id.replace("doc", "")) if isinstance(raw_id, str) and raw_id.startswith("doc")
+            #     else int(raw_id) if raw_id
+            #     else start_idx + i
+            # )
+            # WITH THIS:
+            # Use global mapping if available, otherwise fallback
+            if hasattr(process_chunk, 'id_mapping') and str(raw_id) in process_chunk.id_mapping:
+                doc_id = process_chunk.id_mapping[str(raw_id)]
+            elif isinstance(raw_id, str) and raw_id.startswith("doc"):
+                try:
+                    doc_id = int(raw_id.replace("doc", ""))
+                except ValueError:
+                    doc_id = start_idx + i
+            elif raw_id:
+                try:
+                    doc_id = int(raw_id)
+                except (ValueError, TypeError):
+                    doc_id = start_idx + i
+            else:
+                doc_id = start_idx + i
 
             contents = (doc.get("contents") or doc.get("text", "")).strip()
             title = doc.get("title", contents[:100] if contents else "").strip()

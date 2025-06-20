@@ -53,8 +53,16 @@ def to_pyserini_jsonl(input_path, output_dir, chunk_size, threads) -> str:
     output_path = output_dir / "corpus.jsonl"
 
     total_lines = count_file_lines(input_path)
+    mapping_file = output_dir / "id_mapping.json"
+    if mapping_file.exists():
+        import json
+        with open(mapping_file, "r", encoding="utf-8") as f:
+            id_mapping = json.load(f)
+        # Attach mapping to function for multiprocessing access
+        process_chunk.id_mapping = id_mapping
+        logging.info(f"Loaded ID mapping with {len(id_mapping)} entries")
+    
     logging.info("Streaming and processing corpus with " + str(threads) + " threads...")
-
     with open(input_path, "r", encoding="utf-8") as f_in, \
          open(output_path, "w", encoding="utf-8") as f_out, \
          Pool(processes=threads) as pool:
@@ -63,6 +71,7 @@ def to_pyserini_jsonl(input_path, output_dir, chunk_size, threads) -> str:
 
         for result in pool.imap_unordered(lambda args: process_chunk(*args), generate_chunks(f_in, chunk_size)):
             for doc_json in result:
+                #print(doc_json)
                 f_out.write(doc_json + "\n")
             pbar.update(len(result))
 

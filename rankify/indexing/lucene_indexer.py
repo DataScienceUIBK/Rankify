@@ -14,14 +14,44 @@ class LuceneIndexer(BaseIndexer):
     This class handles the preparation of the corpus, building the index, and loading the index.
     """
     def __init__(self, corpus_path, output_dir="rankify_indices", chunk_size=1024, threads=32, index_type="wiki",
-                 retriever_name="bm25"):
+                 retriever_name="bm25",**kwags):
         super().__init__(corpus_path, output_dir, chunk_size, threads, index_type, retriever_name)
+        self.id_mapping = {}  # string_id -> integer_id mapping
+        self.mapping_file = self.output_dir / "id_mapping.json"
+        
         if index_type =="wiki" and retriever_name == "bm25":
             self.index_dir = self.output_dir / f"bm25_index"
         else:
             self.index_dir = self.output_dir / f"{retriever_name}_index_{index_type}"
     
-
+    def _create_id_mapping(self):
+        """
+        Pre-scan the corpus to create string ID -> integer ID mapping.
+        """
+        import json
+        
+        logging.info("Creating ID mapping...")
+        self.id_mapping = {}
+        next_id = 1
+        
+        with open(self.corpus_path, "r", encoding="utf-8") as f:
+            for line in f:
+                try:
+                    doc = json.loads(line.strip())
+                    original_id = doc.get("id")
+                    if original_id and original_id not in self.id_mapping:
+                        self.id_mapping[str(original_id)] = next_id
+                        next_id += 1
+                except:
+                    continue
+    
+        logging.info(f"Created mapping for {len(self.id_mapping)} unique IDs")
+    def _save_id_mapping(self):
+        """Save the ID mapping to a JSON file."""
+        import json
+        with open(self.mapping_file, "w", encoding="utf-8") as f:
+            json.dump(self.id_mapping, f, ensure_ascii=False, indent=2)
+        logging.info(f"ID mapping saved to {self.mapping_file}")
     def _save_pyserini_corpus(self):
         """
         Convert the corpus to the Pyserini JSONL format.
@@ -37,7 +67,10 @@ class LuceneIndexer(BaseIndexer):
         creates a temporary directory for the corpus, and runs the Pyserini indexer.
         It also handles the cleanup of temporary files and saves a title map for the indexed documents.
         """
+        self._create_id_mapping()
+
         corpus_path = self._save_pyserini_corpus()
+
         temp_corpus_dir = self.output_dir / "temp_corpus"
 
         if temp_corpus_dir.exists():
@@ -50,6 +83,8 @@ class LuceneIndexer(BaseIndexer):
         if self.index_dir.exists():
             shutil.rmtree(self.index_dir)
         self.index_dir.mkdir(parents=True)
+        
+        self._save_id_mapping()
 
         cmd = [
             "python", "-m", "pyserini.index.lucene",
