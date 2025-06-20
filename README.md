@@ -1251,7 +1251,6 @@ Please kindly cite our paper if helps your research:
 
 **🌟 Star this repository if you find it helpful! 🌟**
 
-**Advancing AI for Sustainable Finance and Corporate Transparency**
 
 ![Visitors](https://api.visitorbadge.io/api/visitors?path=https://github.com/DataScienceUIBK/Rankify)
 
