@@ -1245,3 +1245,14 @@ Please kindly cite our paper if helps your research:
 
 
 [![Star History Chart](https://api.star-history.com/svg?repos=DataScienceUIBK/Rankify&type=Date)](https://star-history.com/#DataScienceUIBK/Rankify&Date)
+
+
+<div align="center">
+
+**🌟 Star this repository if you find it helpful! 🌟**
+
+**Advancing AI for Sustainable Finance and Corporate Transparency**
+
+![Visitors](https://api.visitorbadge.io/api/visitors?path=https://github.com/DataScienceUIBK/Rankify)
+
+</div>

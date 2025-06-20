@@ -99,7 +99,7 @@ class DenseRetriever:
         if model not in self.DENSE_INDEX_MAP:
             raise ValueError(f"Unsupported retriever model: {model}")
 
-        if index_type not in self.DENSE_INDEX_MAP[model]:
+        if not index_folder and index_type not in self.DENSE_INDEX_MAP[model]:
             raise ValueError(f"Unsupported index type '{index_type}' for model '{model}'.")
 
         self.model = model
@@ -109,6 +109,12 @@ class DenseRetriever:
         self.threads = threads
         self.tokenizer = SimpleTokenizer()
         self.index_folder = index_folder
+        if  index_folder:
+            self.id_to_id = os.path.join(self.index_folder,"id_mapping.json")
+            
+            with open(self.id_to_id, "r", encoding="utf-8") as f:
+                self.idtoid = json.load(f)
+                self.idtoid = {v: k for k, v in  self.idtoid.items()}
 
         # Load the appropriate searcher
         self.searcher = self._initialize_searcher()
@@ -127,19 +133,20 @@ class DenseRetriever:
         Returns:
             FaissSearcher: A **FAISS searcher** instance.
         """
-        index_url_or_prebuilt = self.DENSE_INDEX_MAP[self.model][self.index_type]
-
         if self.index_folder:
             # If a local index folder is provided, use it directly
-            print(f"Initializing FaissSearcher with local index folder: {self.index_folder}...")
+            print(f"Initializing searcher with local index folder: {self.index_folder}...")
             if self.index_type == "wiki":
                 print("Using LuceneSearcher for wiki index...")
                 return LuceneSearcher(self.index_folder)
             else:
-                print("Using FaissSearcher for index...")
+                print("Using FaissSearcher for custom index...")
                 if not os.path.exists(self.index_folder):
                     raise ValueError(f"Index folder '{self.index_folder}' does not exist.")
                 return FaissSearcher(self.index_folder, self.QUERY_ENCODER_MAP[self.model])
+        
+        # Only access DENSE_INDEX_MAP if we're not using a custom index folder
+        index_url_or_prebuilt = self.DENSE_INDEX_MAP[self.model][self.index_type]
 
         if index_url_or_prebuilt.startswith("http"):  # Handle downloadable indexes
             index_folder_name = os.path.basename(index_url_or_prebuilt).split("?")[0].replace(".zip", "")
@@ -157,7 +164,6 @@ class DenseRetriever:
         else:  # Handle prebuilt indexes from Pyserini
             print(f"Initializing FaissSearcher with prebuilt index: {index_url_or_prebuilt}...")
             return FaissSearcher.from_prebuilt_index(index_url_or_prebuilt, self.QUERY_ENCODER_MAP[self.model])
-
     def load_corpus(self):
         """
         Loads the **corpus** into memory.
@@ -171,6 +177,8 @@ class DenseRetriever:
                 doc = json.loads(line.strip())
                 doc_id = doc.get("docid") or doc.get("id")
                 contents = doc.get("contents", "")
+                #print(doc, contents)
+                #asdasdas
                 title = doc.get("title", contents[:100] if contents else "No Title")
                 self.corpus[str(doc_id)] = {"contents": contents, "title": title}
 
@@ -273,34 +281,54 @@ class DenseRetriever:
             List[Document]: Documents **updated** with retrieved `Context` instances.
         """
         queries = [doc.question.question for doc in documents]
-        #batch_results = self.searcher.batch_search(queries, [str(i) for i in range(len(queries))], k=self.n_docs, threads=self.threads)
         batch_results = self._batch_search(queries, [str(i) for i in range(len(queries))])
-        for i, document in enumerate(tqdm(documents, desc="Processing documents", unit="doc")): #enumerate(documents):
+        
+        for i, document in enumerate(tqdm(documents, desc="Processing documents", unit="doc")):
             contexts = []
             hits = batch_results.get(str(i), [])
             for hit in hits:
+                doc_id = hit.docid
                 try:
                     if self.index_type == "msmarco":
+                        # Handle MSMARCO index
                         doc_id = hit.docid
-                        doc_data = self.corpus.get(str(doc_id), {"contents": "Not Found", "title": "Not Found"})
+                        doc_data = self.corpus.get(str( hit.docid), {"text": "Not Found", "title": "Not Found"})
+                        text = doc_data["text"]
+                        title = doc_data["title"]
+                        
+                    elif self.index_folder and hasattr(self, 'corpus'):
+                        # Handle custom index with loaded corpus
+                        doc_id =  self.idtoid.get(int(hit.docid))
+                        #print(doc_id)
+                        #sadasda
+                        
+                        doc_data = self.corpus.get(str( hit.docid), {"contents": "Not Found", "title": "Not Found"})
                         text = doc_data["contents"]
                         title = doc_data["title"]
-                    else:
-                        # Handle 'wiki' index
+                        
+                    elif isinstance(self.searcher, LuceneSearcher):
+                        # Handle wiki index with LuceneSearcher
                         lucene_doc = self.searcher.doc(hit.docid)
                         raw_content = json.loads(lucene_doc.raw())
                         content = raw_content.get("contents", "")
                         title = content.split('\n')[0] if '\n' in content else "No Title"
                         text = content.split('\n')[1] if '\n' in content else content
-
+                        
+                    else:
+                        # Fallback: try to get document info from the hit itself
+                        print(f"Warning: Cannot retrieve document content for ID {hit.docid}. Using fallback.")
+                        text = f"Document {hit.docid}"
+                        title = f"Document {hit.docid}"
+                    #print(hit.docid)
                     context = Context(
-                        id=int(hit.docid),
+                        id=doc_id,#hit.docid,
                         title=title,
                         text=text,
                         score=hit.score,
                         has_answer=has_answers(text, document.answers.answers, self.tokenizer)
                     )
                     contexts.append(context)
+                    
                 except Exception as e:
                     print(f"Error processing document ID {hit.docid}: {e}")
 

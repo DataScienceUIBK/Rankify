@@ -57,7 +57,7 @@ def main():
     index_parser.add_argument("--output", default="rankify_indices", help="Output directory for index")
     index_parser.add_argument("--chunk_size", type=int, help="Lines per chunk")
     index_parser.add_argument("--threads", type=int, default=32, help="Thread count for processing")
-    index_parser.add_argument("--index_type", type=str, default="wiki", help="Type of index to create (default: wiki)")
+    index_parser.add_argument("--index_type", type=str, default="", help="Type of index to create (default: wiki)")
 
     # Dense-specific option
     index_parser.add_argument("--encoder", type=str, help="Encoder model name for dense indexing")
@@ -69,7 +69,7 @@ def main():
     if args.command == "index":
         handle_output_directory(args.output)
         args.retriever = args.retriever.lower()
-
+        print(args)
         if args.retriever == "bm25":
             indexer = LuceneIndexer(**get_indexer_args(args))
             indexer.build_index()

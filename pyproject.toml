@@ -6,6 +6,10 @@ build-backend = "setuptools.build_meta"
 where = ["."]
 include = ["rankify*"]
 
+[tool.poetry.scripts]
+rankify-index = "rankify.cli.cli:main"
+
+
 [tool.setuptools.package-data]
 "rankify.utils.retrievers.colbert.colbert.indexing.codecs" = ["*.cpp", "*.cu", "*.h"]
 
