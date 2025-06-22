@@ -16,8 +16,9 @@
 <a href="https://github.com/DataScienceUIBK/rankify/releases"><img alt="GitHub release" src="https://img.shields.io/github/release/DataScienceUIBK/rankify.svg?label=Version&color=orange"></a>  
 <a href="https://star-history.com/#DataScienceUIBK/Rankify"> <img src="https://img.shields.io/github/stars/DataScienceUIBK/Rankify?style=social" alt="GitHub stars"> </a>  
 
-[![GitCode](https://gitcode.com/abdoelsayed2016/Rankify/star/badge.svg)](https://gitcode.com/abdoelsayed2016/Rankify)
 
+![Visitors](https://api.visitorbadge.io/api/visitors?path=https://github.com/DataScienceUIBK/Rankify)
+[![GitCode](https://gitcode.com/abdoelsayed2016/Rankify/star/badge.svg)](https://gitcode.com/abdoelsayed2016/Rankify)
 <a href="https://www.producthunt.com/products/github-113?embed=true&utm_source=badge-featured&utm_medium=badge&utm_source=badge-github&#0045;73d2dbbf&#0045;d84f&#0045;495d&#0045;86d8&#0045;af4dd72fc31f" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=980097&theme=light&t=1750416463103" alt="GitHub - retrieval&#0044;&#0032;re&#0045;ranking&#0044;&#0032;and&#0032;retrieval&#0045;augmented&#0032;generation&#0032; | Product Hunt" style="width: 200px; height: 54px;" width="54" height="30" /></a>
 
 </div>
@@ -1249,12 +1250,5 @@ Please kindly cite our paper if helps your research:
 [![Star History Chart](https://api.star-history.com/svg?repos=DataScienceUIBK/Rankify&type=Date)](https://star-history.com/#DataScienceUIBK/Rankify&Date)
 
 
-<div align="center">
 
-**🌟 Star this repository if you find it helpful! 🌟**
-
-
-![Visitors](https://api.visitorbadge.io/api/visitors?path=https://github.com/DataScienceUIBK/Rankify)
-
-</div>
 
