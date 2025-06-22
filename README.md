@@ -1,25 +1,24 @@
-
+<div align="center">
 
 [ [English](README.md) | [中文](README_zh.md)]
 
-# <p align="center"><img src="./images/rankify-crop.png" width="300" style ="border-radius: 50;"/></p>
-### <div align="center">🔥 Rankify: A Comprehensive Python Toolkit for Retrieval, Re-Ranking, and Retrieval-Augmented Generation 🔥<div>
+<img src="./images/rankify-crop.png" width="300" style="border-radius: 50px;"/>
 
+# 🔥 Rankify: A Comprehensive Python Toolkit for Retrieval, Re-Ranking, and Retrieval-Augmented Generation 🔥
 
-<div align="center">
-<a href="https://arxiv.org/abs/2502.02464" target="_blank"><img src=https://img.shields.io/badge/arXiv-b5212f.svg?logo=arxiv></a>
-<a href="https://huggingface.co/datasets/abdoelsayed/reranking-datasets" target="_blank"><img src=https://img.shields.io/badge/%F0%9F%A4%97%20HuggingFace%20Datasets-27b3b4.svg></a>
-<a href="https://huggingface.co/datasets/abdoelsayed/reranking-datasets-light" target="_blank"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20HuggingFace%20Datasets%20light-orange.svg"></a>
-<a><img alt="Static Badge" src="https://img.shields.io/badge/Python-3.10_3.11-blue"></a>
-<a href="https://opensource.org/license/apache-2-0"><img src="https://img.shields.io/static/v1?label=License&message=Apache-2.0&color=red"></a>
- <a href="https://pepy.tech/projects/rankify"><img src="https://static.pepy.tech/badge/rankify" alt="PyPI Downloads"></a>
-<a href="https://github.com/DataScienceUIBK/rankify/releases"><img alt="GitHub release" src="https://img.shields.io/github/release/DataScienceUIBK/rankify.svg?label=Version&color=orange"></a>  
-<a href="https://star-history.com/#DataScienceUIBK/Rankify"> <img src="https://img.shields.io/github/stars/DataScienceUIBK/Rankify?style=social" alt="GitHub stars"> </a>  
+[![arXiv](https://img.shields.io/badge/arXiv-b5212f.svg?logo=arxiv)](https://arxiv.org/abs/2502.02464)
+[![HuggingFace Datasets](https://img.shields.io/badge/%F0%9F%A4%97%20HuggingFace%20Datasets-27b3b4.svg)](https://huggingface.co/datasets/abdoelsayed/reranking-datasets)
+[![HuggingFace Datasets light](https://img.shields.io/badge/%F0%9F%A4%97%20HuggingFace%20Datasets%20light-orange.svg)](https://huggingface.co/datasets/abdoelsayed/reranking-datasets-light)
+[![Python](https://img.shields.io/badge/Python-3.10_3.11-blue)](#)
+[![License](https://img.shields.io/static/v1?label=License&message=Apache-2.0&color=red)](https://opensource.org/license/apache-2-0)
 
-
-![Visitors](https://api.visitorbadge.io/api/visitors?path=https://github.com/DataScienceUIBK/Rankify)
+[![PyPI Downloads](https://static.pepy.tech/badge/rankify)](https://pepy.tech/projects/rankify)
+[![GitHub release](https://img.shields.io/github/release/DataScienceUIBK/rankify.svg?label=Version&color=orange)](https://github.com/DataScienceUIBK/rankify/releases)
+[![GitHub stars](https://img.shields.io/github/stars/DataScienceUIBK/Rankify?style=social)](https://star-history.com/#DataScienceUIBK/Rankify)
+[![Visitors](https://api.visitorbadge.io/api/visitors?path=https://github.com/DataScienceUIBK/Rankify)](#)
 [![GitCode](https://gitcode.com/abdoelsayed2016/Rankify/star/badge.svg)](https://gitcode.com/abdoelsayed2016/Rankify)
-<a href="https://www.producthunt.com/products/github-113?embed=true&utm_source=badge-featured&utm_medium=badge&utm_source=badge-github&#0045;73d2dbbf&#0045;d84f&#0045;495d&#0045;86d8&#0045;af4dd72fc31f" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=980097&theme=light&t=1750416463103" alt="GitHub - retrieval&#0044;&#0032;re&#0045;ranking&#0044;&#0032;and&#0032;retrieval&#0045;augmented&#0032;generation&#0032; | Product Hunt" style="width: 200px; height: 54px;" width="54" height="30" /></a>
+
+[![Product Hunt](https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=980097&theme=light&t=1750416463103)](https://www.producthunt.com/products/github-113?embed=true&utm_source=badge-featured&utm_medium=badge&utm_source=badge-github&#0045;73d2dbbf&#0045;d84f&#0045;495d&#0045;86d8&#0045;af4dd72fc31f)
 
 </div>
 
