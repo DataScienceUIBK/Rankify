@@ -3,11 +3,12 @@ import argparse
 from rankify.indexing.colbert_indexer import ColBERTIndexer
 from rankify.indexing.lucene_indexer import LuceneIndexer
 from rankify.indexing.dpr_indexer import DPRIndexer
+from rankify.indexing.ance_indexer import ANCEIndexer  # NEW IMPORT
 from rankify.indexing.contriever_indexer import ContrieverIndexer
 from rankify.indexing.bge_indexer import BGEIndexer
 from pathlib import Path
 
-SUPPORTED_RETRIEVERS = ["bm25", "dpr", "contriever", "colbert", "bge"]
+SUPPORTED_RETRIEVERS = ["bm25", "dpr", "ance", "contriever", "colbert", "bge"]  # ADDED "ance"
 
 def handle_output_directory(output_dir):
     """
@@ -95,6 +96,18 @@ def main():
 
                 print("DPR indexing complete.")
 
+        # NEW ANCE BLOCK
+        elif args.retriever == "ance":
+            if args.encoder is None:
+                args.encoder = "castorini/ance-msmarco-passage"
+                print("No encoder specified. Using default: castorini/ance-msmarco-passage")
+
+            indexer = ANCEIndexer(**get_indexer_args(args))
+            indexer.build_index()
+            indexer.load_index()
+
+            print("ANCE indexing complete.")
+
         elif args.retriever == "contriever":
             if args.encoder is None:
                 #Todo: check if supported
@@ -129,3 +142,6 @@ def main():
             print("BGE indexing complete.")
         else:
             print(f"Unknown retriever type: {args.retriever}. Supported types are {SUPPORTED_RETRIEVERS}.")
+
+if __name__ == "__main__":
+    main()
