@@ -4,23 +4,55 @@
 
 <img src="./images/rankify-crop.png" width="300" style="border-radius: 50px;"/>
 
-# 🔥 Rankify: A Comprehensive Python Toolkit for Retrieval, Re-Ranking, and Retrieval-Augmented Generation 🔥
+### 🔥 Rankify: A Comprehensive Python Toolkit for Retrieval, Re-Ranking, and Retrieval-Augmented Generation 🔥
 
-[![arXiv](https://img.shields.io/badge/arXiv-b5212f.svg?logo=arxiv)](https://arxiv.org/abs/2502.02464)
-[![HuggingFace Datasets](https://img.shields.io/badge/%F0%9F%A4%97%20HuggingFace%20Datasets-27b3b4.svg)](https://huggingface.co/datasets/abdoelsayed/reranking-datasets)
-[![HuggingFace Datasets light](https://img.shields.io/badge/%F0%9F%A4%97%20HuggingFace%20Datasets%20light-orange.svg)](https://huggingface.co/datasets/abdoelsayed/reranking-datasets-light)
-[![Python](https://img.shields.io/badge/Python-3.10_3.11-blue)](#)
-[![License](https://img.shields.io/static/v1?label=License&message=Apache-2.0&color=red)](https://opensource.org/license/apache-2-0)
+<!-- First row of badges -->
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px;">
+  <a href="https://arxiv.org/abs/2502.02464">
+    <img src="https://img.shields.io/badge/arXiv-b5212f.svg?logo=arxiv" style="height: 24px;">
+  </a>
+  <a href="https://huggingface.co/datasets/abdoelsayed/reranking-datasets">
+    <img src="https://img.shields.io/badge/%F0%9F%A4%97%20HuggingFace%20Datasets-27b3b4.svg" style="height: 24px;">
+  </a>
+  <a href="https://huggingface.co/datasets/abdoelsayed/reranking-datasets-light">
+    <img src="https://img.shields.io/badge/%F0%9F%A4%97%20HuggingFace%20Datasets%20light-orange.svg" style="height: 24px;">
+  </a>
+  <a href="#">
+    <img src="https://img.shields.io/badge/Python-3.10_3.11-blue" style="height: 24px;">
+  </a>
+  <a href="https://opensource.org/license/apache-2-0">
+    <img src="https://img.shields.io/static/v1?label=License&message=Apache-2.0&color=red" style="height: 24px;">
+  </a>
+</div>
 
-[![PyPI Downloads](https://static.pepy.tech/badge/rankify)](https://pepy.tech/projects/rankify)
-[![GitHub release](https://img.shields.io/github/release/DataScienceUIBK/rankify.svg?label=Version&color=orange)](https://github.com/DataScienceUIBK/rankify/releases)
-[![GitHub stars](https://img.shields.io/github/stars/DataScienceUIBK/Rankify?style=social)](https://star-history.com/#DataScienceUIBK/Rankify)
-[![Visitors](https://api.visitorbadge.io/api/visitors?path=https://github.com/DataScienceUIBK/Rankify)](#)
-[![GitCode](https://gitcode.com/abdoelsayed2016/Rankify/star/badge.svg)](https://gitcode.com/abdoelsayed2016/Rankify)
+<!-- Second row of badges -->
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin-bottom: 8px;">
+  <a href="https://pepy.tech/projects/rankify">
+    <img src="https://static.pepy.tech/badge/rankify" style="height: 24px;">
+  </a>
+  <a href="https://github.com/DataScienceUIBK/rankify/releases">
+    <img src="https://img.shields.io/github/release/DataScienceUIBK/rankify.svg?label=Version&color=orange" style="height: 24px;">
+  </a>
+  <a href="https://star-history.com/#DataScienceUIBK/Rankify">
+    <img src="https://img.shields.io/github/stars/DataScienceUIBK/Rankify?style=social" style="height: 24px;">
+  </a>
+  <a href="#">
+    <img src="https://api.visitorbadge.io/api/visitors?path=https://github.com/DataScienceUIBK/Rankify" style="height: 24px;">
+  </a>
+  <a href="https://gitcode.com/abdoelsayed2016/Rankify">
+    <img src="https://gitcode.com/abdoelsayed2016/Rankify/star/badge.svg" style="height: 24px;">
+  </a>
+</div>
 
-[![Product Hunt](https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=980097&theme=light&t=1750416463103)](https://www.producthunt.com/products/github-113?embed=true&utm_source=badge-featured&utm_medium=badge&utm_source=badge-github&#0045;73d2dbbf&#0045;d84f&#0045;495d&#0045;86d8&#0045;af4dd72fc31f)
+<!-- Product Hunt badge -->
+<div style="margin-top: 10px;">
+  <a href="https://www.producthunt.com/products/github-113?embed=true&utm_source=badge-featured&utm_medium=badge&utm_source=badge-github&#0045;73d2dbbf&#0045;d84f&#0045;495d&#0045;86d8&#0045;af4dd72fc31f">
+    <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=980097&theme=light&t=1750416463103" style="height: 40px;">
+  </a>
+</div>
 
 </div>
+
 
 If you like our Framework, **don't hesitate to ⭐ star this repository ⭐**. This helps us to **make the Framework more better and scalable to different models and methods 🤗**.
 
