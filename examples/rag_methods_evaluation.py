@@ -15,6 +15,7 @@ DATASETS = [
     "strategyqa-test"
 ]
 
+
 # RAG methods to evaluate
 RAG_METHODS = [
     "basic-rag",
