@@ -68,7 +68,7 @@ class Generator:
         self.rag_method = rag_method_class(model, **kwargs)
 
 
-    def generate(self, documents, custom_prompt=None,**kwargs):
+    def generate(self, documents, **kwargs):
         """
         Generates answers based on the **input documents**.
 
@@ -86,4 +86,4 @@ class Generator:
             # Output: ['William Shakespeare wrote Hamlet in the early 1600s.']
             ```
         """
-        return self.rag_method.answer_questions(documents, custom_prompt, **kwargs)
+        return self.rag_method.answer_questions(documents, **kwargs)
