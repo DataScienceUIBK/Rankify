@@ -30,7 +30,6 @@ MODELS = [
     {
         "model_name": 'meta-llama/Meta-Llama-3.1-8B-Instruct',
         "backend": "huggingface",
-        "torch_dtype": torch.float16
     },
     # Add more model configs as dicts here
 ]
