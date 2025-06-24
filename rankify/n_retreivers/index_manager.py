@@ -234,12 +234,48 @@ class IndexManager:
                 return {v: k for k, v in mapping.items()}  # Reverse mapping
         return None
     
-    def load_corpus(self, index_path: str) -> Dict:
-        """Load corpus data from index path."""
-        corpus_file = os.path.join(index_path, "corpus.jsonl")
-        if not os.path.exists(corpus_file):
-            return {}
+    # def load_corpus(self, index_path: str) -> Dict:
+    #     """Load corpus data from index path."""
+    #     corpus_file = os.path.join(index_path, "corpus.jsonl")
+    #     if not os.path.exists(corpus_file):
+    #         return {}
         
+    #     corpus = {}
+    #     with open(corpus_file, "r", encoding="utf-8") as f:
+    #         for line in f:
+    #             doc = json.loads(line.strip())
+    #             doc_id = doc.get("docid") or doc.get("id")
+    #             contents = doc.get("contents", "")
+    #             title = doc.get("title", contents[:100] if contents else "No Title")
+    #             corpus[str(doc_id)] = {"contents": contents, "title": title}
+        
+    #     return corpus
+    def load_corpus(self, index_path: str) -> Dict:
+        """Load corpus data from index path (supports multiple formats)."""
+        # Try different corpus file formats in order of preference
+        corpus_files = [
+            "corpus_metadata.json",  # Your custom format
+            "corpus.jsonl",          # Standard JSONL format
+            "corpus.json"            # Alternative JSON format
+        ]
+        
+        for corpus_filename in corpus_files:
+            corpus_file = os.path.join(index_path, corpus_filename)
+            if os.path.exists(corpus_file):
+                print(f"📚 Loading corpus from {corpus_filename}")
+                
+                if corpus_filename.endswith('.jsonl'):
+                    # JSONL format (one JSON object per line)
+                    return self._load_corpus_jsonl(corpus_file)
+                else:
+                    # JSON format (single JSON object)
+                    return self._load_corpus_json(corpus_file)
+        
+        print(f"❌ No corpus file found in {index_path}")
+        return {}
+
+    def _load_corpus_jsonl(self, corpus_file: str) -> Dict:
+        """Load corpus from JSONL format (one JSON object per line)."""
         corpus = {}
         with open(corpus_file, "r", encoding="utf-8") as f:
             for line in f:
@@ -248,9 +284,36 @@ class IndexManager:
                 contents = doc.get("contents", "")
                 title = doc.get("title", contents[:100] if contents else "No Title")
                 corpus[str(doc_id)] = {"contents": contents, "title": title}
+        return corpus
+
+    def _load_corpus_json(self, corpus_file: str) -> Dict:
+        """Load corpus from JSON format (single JSON object)."""
+        corpus = {}
+        with open(corpus_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        
+        # Handle different JSON structures
+        if isinstance(data, dict):
+            # If it's a dict, iterate through it
+            for doc_id, doc_data in data.items():
+                if isinstance(doc_data, dict):
+                    contents = doc_data.get("contents", "")
+                    title = doc_data.get("title", contents[:100] if contents else "No Title")
+                else:
+                    # If doc_data is a string, use it as contents
+                    contents = str(doc_data)
+                    title = contents[:100] if contents else "No Title"
+                corpus[str(doc_id)] = {"contents": contents, "title": title}
+        
+        elif isinstance(data, list):
+            # If it's a list, iterate through documents
+            for doc in data:
+                doc_id = doc.get("docid") or doc.get("id")
+                contents = doc.get("contents", "")
+                title = doc.get("title", contents[:100] if contents else "No Title")
+                corpus[str(doc_id)] = {"contents": contents, "title": title}
         
         return corpus
-    
     def download_and_extract_index(self, url: str) -> str:
         """Download and extract index from URL, return local path."""
         # This is used by DenseRetriever pattern
