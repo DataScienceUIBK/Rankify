@@ -4,7 +4,7 @@ from rankify.dataset.dataset import Document
 
 class BaseRAGMethod(ABC):
     @abstractmethod
-    def answer_questions(self, documents: List[Document], **kwargs) -> List[str]:
+    def answer_questions(self, documents: List[Document], custom_prompt=None, **kwargs) -> List[str]:
         """
         Abstract method to answer a question based on a list of documents.
         """

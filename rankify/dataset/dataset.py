@@ -538,9 +538,18 @@ class Dataset:
         """
         dpr_data = []
         for doc in self.documents:
+            if hasattr(doc.answers, "answers"):
+                answers = doc.answers.answers
+            elif isinstance(doc.answers, (list, tuple)):
+                answers = list(doc.answers)
+            elif isinstance(doc.answers, str):
+                answers = [doc.answers]
+            else:
+                answers = [str(doc.answers)]
+
             dpr_entry = {
                 "question": doc.question.question,
-                "answers": doc.answers.answers,
+                "answers": answers,
                 "ctxs": [ctx.to_dict(save_text) for ctx in doc.contexts]
             }
             if save_reranked:
