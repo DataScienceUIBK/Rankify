@@ -44,10 +44,4 @@ class VLLMModel(BaseRAGModel):
         # Call the vLLM API using the LLM client
         response = self.llm.generate(prompt, kwargs["sampling_params"])
         
-        if response and response[0].outputs:
-            # Extract the generated text from the response
-            generated_text = response[0].outputs[0].text.strip()
-        else:
-            generated_text = ""
-
-        return generated_text
+        return response

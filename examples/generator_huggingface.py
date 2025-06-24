@@ -1,10 +1,9 @@
 import torch
 from rankify.dataset.dataset import Document, Question, Answer, Context
 from rankify.generator.generator import Generator
-from rankify.generator.prompt_generator import PromptGenerator
 
 # Define question and answer
-question = Question("What is the capital of France?")
+question = Question("What is the capital of Austria?")
 answers=Answer("")
 contexts = [
     Context(id=1, title="France", text="The capital of France is Paris.", score=0.9),

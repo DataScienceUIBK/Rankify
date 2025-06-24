@@ -25,29 +25,13 @@ class HuggingFaceModel(BaseRAGModel):
         self.model = model
         self.prompt_generator = prompt_generator
 
-    def generate(self, prompt: str, **kwargs):
-        """Generate a response using Hugging Face's model and return only the answer(s)."""
-        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
-
-        kwargs.setdefault("max_new_tokens", 64)
-        kwargs.setdefault("do_sample", True)
-        kwargs.setdefault("num_return_sequences", 1)
-        kwargs.setdefault("eos_token_id", self.tokenizer.eos_token_id)
-        kwargs.setdefault("pad_token_id", self.tokenizer.eos_token_id)
+    def generate(self, prompt: str, **kwargs) -> str:
+        """Generate a response using Hugging Face's model."""
+        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device) # ensure inputs are on the same device as the model
+        # define generation parameters defaults TODO: should be excluded into config
+        kwargs.setdefault("max_length", 128)
+        kwargs.setdefault("temperature", 0.7)
+        
 
         outputs = self.model.generate(**inputs, **kwargs)
-
-    # If multiple sequences requested, decode all
-        if kwargs.get("num_return_sequences", 1) > 1:
-            answers = []
-            for output in outputs:
-                generated_text = self.tokenizer.decode(output, skip_special_tokens=True)
-                answer = generated_text[len(prompt):].strip()
-                answer = answer.split("\n")[0].strip()
-                answers.append(answer)
-            return answers
-        else:
-            generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
-            answer = generated_text[len(prompt):].strip()
-            answer = answer.split("\n")[0].strip()
-            return answer
+        return self.tokenizer.decode(outputs[0], skip_special_tokens=True)
