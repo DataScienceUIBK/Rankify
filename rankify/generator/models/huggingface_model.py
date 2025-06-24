@@ -29,7 +29,7 @@ class HuggingFaceModel(BaseRAGModel):
         """Generate a response using Hugging Face's model and return only the answer(s)."""
         inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
 
-        kwargs.setdefault("max_new_tokens", 32)
+        kwargs.setdefault("max_new_tokens", 64)
         kwargs.setdefault("do_sample", True)
         kwargs.setdefault("num_return_sequences", 1)
         kwargs.setdefault("eos_token_id", self.tokenizer.eos_token_id)
