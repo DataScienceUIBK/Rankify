@@ -1,3 +1,4 @@
+#bm25.py
 import os
 import zipfile
 import requests
@@ -71,12 +72,17 @@ class BM25Retriever:
         self.index_type = index_type
 
         # If a custom local index folder is provided, use it; else default to cached folder
+        self.id_to_id= None
         if index_folder:
             self.index_folder = index_folder
+            self.id_to_id = os.path.join(self.index_folder,"id_mapping.json")
+            
+            with open(self.id_to_id, "r", encoding="utf-8") as f:
+                self.idtoid = json.load(f)
+                self.idtoid = {v: k for k, v in  self.idtoid.items()}
         else:
             self.index_url = INDEX_TYPE['bm25'][index_type]['url']
             self.index_folder = os.path.join(os.environ.get("RERANKING_CACHE_DIR", "./cache"), 'index', f"bm25_index_{index_type}")
-
         if index_type =="wiki":
             self.index_path =  os.path.join(self.index_folder, f"bm25_index")
         else:
@@ -84,14 +90,15 @@ class BM25Retriever:
 
         self.title_map_path = os.path.join(self.index_path, "corpus.json")
 
+        
+
 
         # TODO: Check if still supported in future
         # self._ensure_index_downloaded()
 
         self.searcher = LuceneSearcher(self.index_path)
         #Todo: remove
-        #with open(self.title_map_path, "r", encoding="utf-8") as f:
-            #self.pid2title = json.load(f)
+        #
 
     def _ensure_index_downloaded(self) -> None:
         """
@@ -115,51 +122,6 @@ class BM25Retriever:
             with zipfile.ZipFile(zip_path, "r") as zip_ref:
                 zip_ref.extractall(self.index_folder)
             os.remove(zip_path)
-    def retrieve__(self, documents: List[Document]) -> List[Document]:
-        """
-        Retrieves **relevant contexts** for each document in the input list using BM25.
-
-        Args:
-            documents (List[Document]): A **list of queries** as `Document` instances.
-
-        Returns:
-            List[Document]: Documents **updated** with retrieved `Context` instances.
-        """
-        print(f"Retrieving {len(documents)} documents one at a time...")
-
-        for document in tqdm(documents, desc="Retrieving documents", unit="doc"):
-            query = document.question.question  # Extract the query string
-            try:
-                # Perform search for the single query
-                hits = self.searcher.search(query, self.n_docs)
-
-                contexts = []
-                for hit in hits:
-                    try:
-                        lucene_doc = self.searcher.doc(hit.docid)
-                        print(lucene_doc.raw())
-                        raw_content = json.loads(lucene_doc.raw())  # Parse the raw JSON
-                        text = raw_content.get("contents", "")
-                        title = self.pid2title.get(hit.docid, "No Title")
-
-                        context = Context(
-                            id=int(hit.docid),
-                            title=title,
-                            text=text,
-                            score=hit.score,
-                            has_answer=has_answers(text, document.answers.answers, self.tokenizer)
-                        )
-                        contexts.append(context)
-                    except Exception as e:
-                        print(f"Error processing document ID {hit.docid}: {e}")
-
-                # Assign the retrieved contexts to the document
-                document.contexts = contexts
-
-            except Exception as e:
-                print(f"Error retrieving contexts for query '{query}': {e}")
-
-        return documents
 
     def retrieve(self, documents: List[Document]) -> List[Document]:
         """
@@ -183,10 +145,13 @@ class BM25Retriever:
         for i, qid in enumerate(tqdm(batch_qids, desc="Processing documents", unit="doc")):
             document = documents[i]
             hits = batch_results.get(qid, [])
-
+            #print(hits)
             contexts = []
             for hit in hits:
                 try:
+                    #print("id:", hit.docid)
+                    
+
                     lucene_doc = self.searcher.doc(hit.docid)
                     raw_content = json.loads(lucene_doc.raw())
 
@@ -194,10 +159,14 @@ class BM25Retriever:
                     has_title = '\n' in content
                     title = content.split('\n')[0] if has_title else "No Title"
                     text = content.split('\n')[1] if has_title else content
-
+                    if self.id_to_id:
+                        docid = self.idtoid.get(int(hit.docid))
+                        #print(docid)
+                    else:
+                        docid = hit.docid
                     #Todo: Change id type from int to str
                     context = Context(
-                        id=int(hit.docid),
+                        id=docid,
                         title=title,
                         text=text,
                         score=hit.score,

@@ -1,135 +1,235 @@
 import shutil
 import pickle
 import logging
-
 import numpy as np
+from pathlib import Path
+from typing import List, Tuple
+from tqdm import tqdm
 
 from rankify.indexing.base_indexer import BaseIndexer
-from rankify.indexing.format_converters import to_contriever_embedding_chunks, to_pyserini_jsonl_dense
+from rankify.indexing.format_converters import to_contriever_embedding_chunks, to_pyserini_jsonl_dense,to_tsv
 from rankify.utils.retrievers.contriever.index import Indexer
 
 logging.basicConfig(level=logging.INFO)
 
 class ContrieverIndexer(BaseIndexer):
     """
-    Contriever Indexer that builds dense FAISS-based indexes using precomputed embeddings.
+    Corrected Contriever Indexer that efficiently builds dense FAISS-based indexes.
 
-    Args:
-        corpus_path (str): Path to the corpus file (.jsonl).
-        encoder_name (str): HuggingFace model name for Contriever.
-        output_dir (str): Directory to save the index.
-        chunk_size (int): Number of lines per chunk during processing.
-        threads (int): Unused here (kept for consistency).
-        index_type (str): Type of index (e.g., "wiki").
-        batch_size (int): Batch size for encoding.
-        device (str): Device to use (i.e. "cuda" or "cpu").
+    Key improvements:
+    - Memory-efficient batch processing
+    - Proper error handling
+    - Streamlined embedding indexing
+    - Better resource management
     """
 
     def __init__(self,
                  corpus_path,
                  encoder_name="facebook/contriever",
                  output_dir="rankify_indices",
-                 chunk_size=100,
+                 chunk_size=5000000,
                  threads=32,
                  index_type="wiki",
                  batch_size=1000000,
-                 device="cuda"):
-        super().__init__(corpus_path, output_dir, chunk_size, threads, index_type)
+                 retriever_name="contriever",
+                 device="cuda",
+                 embedding_batch_size=32):
+        super().__init__(corpus_path, output_dir, chunk_size, threads, index_type, retriever_name)
         self.encoder_name = encoder_name
         self.device = device
         self.batch_size = batch_size
+        self.embedding_batch_size = embedding_batch_size  # For embedding generation
         self.index_dir = self.output_dir / f"contriever_index_{index_type}"
+        
+        # Validate parameters
+        if not Path(corpus_path).exists():
+            raise FileNotFoundError(f"Corpus file not found: {corpus_path}")
 
-    def _save_dense_embeddings(self):
+    def _save_dense_embeddings(self) -> List[Path]:
         """
         Convert the corpus into Contriever embeddings stored in shard .pkl files.
+        Returns list of paths to embedding files.
         """
-        return to_contriever_embedding_chunks(
-            self.corpus_path,
-            self.index_dir,
-            self.chunk_size,
-            self.encoder_name,
-            self.batch_size,
-            self.device
-        )
+        logging.info("Generating Contriever embeddings...")
+        
+        try:
+            embedding_files = to_contriever_embedding_chunks(
+                self.corpus_path,
+                self.index_dir,
+                self.chunk_size,
+                self.encoder_name,
+                self.embedding_batch_size,  # Use smaller batch for embeddings
+                self.device
+            )
+            
+            if not embedding_files:
+                raise ValueError("No embedding files were generated")
+                
+            logging.info(f"Generated {len(embedding_files)} embedding files")
+            return embedding_files
+            
+        except Exception as e:
+            logging.error(f"Error generating embeddings: {e}")
+            raise
 
-    def _save_corpus(self):
-        """
-        Convert the corpus to dense-compatible Pyserini format.
-        """
-        return to_pyserini_jsonl_dense(self.corpus_path, self.index_dir, self.chunk_size, self.threads)
+    def _save_corpus(self) -> str:
+        """Convert the corpus to dense-compatible Pyserini format."""
+        logging.info("Converting corpus to Pyserini JSONL format...")
+        return to_tsv(self.corpus_path, self.index_dir, self.chunk_size, self.threads)
 
     def build_index(self):
-        if self.index_dir.exists():
-            shutil.rmtree(self.index_dir)
-        self.index_dir.mkdir(parents=True)
+        """Build the Contriever index with improved error handling and efficiency."""
+        try:
+            # Clean and create index directory
+            if self.index_dir.exists():
+                shutil.rmtree(self.index_dir)
+            self.index_dir.mkdir(parents=True)
 
-        self._save_corpus()
+            # Convert corpus
+            self._save_corpus()
 
-        embedding_files = self._save_dense_embeddings()  # returns list of .pkl shards
+            # Generate embeddings
+            embedding_files = self._save_dense_embeddings()
 
-        index = Indexer(vector_sz=768, n_subquantizers=0, n_bits=8)
+            # Create index
+            logging.info("Creating Contriever index...")
+            index = Indexer(vector_sz=768, n_subquantizers=0, n_bits=8)
 
-        self._index_encoded_data(index, embedding_files, self.batch_size)
+            # Index embeddings efficiently
+            self._index_encoded_data_efficient(index, embedding_files)
 
-        index.serialize(self.index_dir)
+            # Serialize index
+            logging.info("Serializing index...")
+            index.serialize(self.index_dir)
 
-        self._save_title_map()
+            # Save title map
+            self._save_title_map()
 
-        logging.info(f"Contriever index stored at {self.index_dir}")
+            # Clean up embedding files to save space
+            self._cleanup_embedding_files(embedding_files)
 
-    def _index_encoded_data(self, index, embedding_files, indexing_batch_size=1000000):
+            logging.info(f"✅ Contriever index successfully stored at {self.index_dir}")
+            
+        except Exception as e:
+            logging.error(f"Error building index: {e}")
+            # Clean up on failure
+            if self.index_dir.exists():
+                shutil.rmtree(self.index_dir)
+            raise
+
+    def _index_encoded_data_efficient(self, index: Indexer, embedding_files: List[Path]):
         """
-        Loads and indexes **encoded passage embeddings** into FAISS.
-
-        Args:
-            index (Indexer): The FAISS **index** to store the embeddings.
-            embedding_files (List[str]): List of **files containing precomputed embeddings**.
-            indexing_batch_size (int, optional): **Batch size for indexing** (default: `1000000`).
+        Efficiently loads and indexes encoded passage embeddings into FAISS.
+        
+        This version processes files one at a time and batches within each file,
+        avoiding memory issues with large corpora.
         """
-        all_ids = []
-        all_embeddings = np.array([])
-        for i, file_path in enumerate(embedding_files):
-            print(f"Loading file {file_path}")
-            with open(file_path, "rb") as fin:
-                ids, embeddings = pickle.load(fin)
+        total_indexed = 0
+        
+        for file_path in tqdm(embedding_files, desc="Indexing embedding files"):
+            try:
+                logging.info(f"Processing embedding file: {file_path}")
+                
+                # Load embeddings from file
+                with open(file_path, "rb") as fin:
+                    ids, embeddings = pickle.load(fin)
+                
+                if len(ids) != len(embeddings):
+                    raise ValueError(f"Mismatch between IDs ({len(ids)}) and embeddings ({len(embeddings)}) in {file_path}")
+                
+                # Process this file's embeddings in batches
+                num_embeddings = len(embeddings)
+                for start_idx in tqdm(range(0, num_embeddings, self.batch_size), 
+                                    desc=f"Batching {file_path.name}", leave=False):
+                    end_idx = min(start_idx + self.batch_size, num_embeddings)
+                    
+                    batch_ids = ids[start_idx:end_idx]
+                    batch_embeddings = embeddings[start_idx:end_idx]
+                    
+                    # Validate embeddings
+                    if not isinstance(batch_embeddings, np.ndarray):
+                        batch_embeddings = np.array(batch_embeddings)
+                    
+                    if batch_embeddings.dtype != np.float32:
+                        batch_embeddings = batch_embeddings.astype(np.float32)
+                    
+                    # Add to index
+                    index.index_data(batch_ids, batch_embeddings)
+                    total_indexed += len(batch_ids)
+                
+                logging.info(f"Processed {num_embeddings} embeddings from {file_path.name}")
+                
+            except Exception as e:
+                logging.error(f"Error processing file {file_path}: {e}")
+                raise
+        
+        logging.info(f"✅ Successfully indexed {total_indexed} embeddings")
 
-            all_embeddings = np.vstack((all_embeddings, embeddings)) if all_embeddings.size else embeddings
-            all_ids.extend(ids)
-            while all_embeddings.shape[0] > indexing_batch_size:
-                all_embeddings, all_ids = self.add_embeddings(index, all_embeddings, all_ids, indexing_batch_size)
+    def _cleanup_embedding_files(self, embedding_files: List[Path]):
+        """Clean up embedding files after indexing to save disk space."""
+        try:
+            for file_path in embedding_files:
+                if file_path.exists():
+                    file_path.unlink()
+            logging.info(f"Cleaned up {len(embedding_files)} embedding files")
+        except Exception as e:
+            logging.warning(f"Error cleaning up embedding files: {e}")
 
-        while all_embeddings.shape[0] > 0:
-            all_embeddings, all_ids = self.add_embeddings(index, all_embeddings, all_ids, indexing_batch_size)
+    def load_index(self) -> Indexer:
+        """Load the Contriever index from the specified directory."""
+        if not self.index_dir.exists():
+            raise FileNotFoundError(f"Index directory {self.index_dir} does not exist")
+        
+        if not any(self.index_dir.iterdir()):
+            raise FileNotFoundError(f"Index directory {self.index_dir} is empty")
 
-    def add_embeddings(self, index, embeddings, ids, indexing_batch_size):
-        """
-        Adds a batch of embeddings to the index.
-        Args:
-            index (Indexer): The FAISS index to store the embeddings.
-            embeddings (np.ndarray): Array of embeddings to add.
-            ids (list): List of IDs corresponding to the embeddings.
-            indexing_batch_size (int): Batch size for indexing.
-        """
-        end_idx = min(indexing_batch_size, embeddings.shape[0])
-        ids_to_add = ids[:end_idx]
-        embeddings_to_add = embeddings[:end_idx]
-        ids = ids[end_idx:]
-        embeddings = embeddings[end_idx:]
-        index.index_data(ids_to_add, embeddings_to_add)
-        return embeddings, ids
+        try:
+            index = Indexer(vector_sz=768, n_subquantizers=0, n_bits=8)
+            index.deserialize_from(self.index_dir)
+            logging.info(f"✅ Successfully loaded index from {self.index_dir}")
+            return index
+            
+        except Exception as e:
+            logging.error(f"Error loading index from {self.index_dir}: {e}")
+            raise
 
-    def load_index(self):
-        """
-        Loads the Contriever index from the specified directory.
-        :return:
-        """
-        index = Indexer(vector_sz=768, n_subquantizers=0, n_bits=8)
+    def validate_index(self) -> bool:
+        """Validate that the index was built correctly."""
+        try:
+            index = self.load_index()
+            
+            # Check if index has embeddings
+            if hasattr(index, 'index') and hasattr(index.index, 'ntotal'):
+                num_vectors = index.index.ntotal
+                logging.info(f"Index contains {num_vectors} vectors")
+                return num_vectors > 0
+            
+            return True
+            
+        except Exception as e:
+            logging.error(f"Index validation failed: {e}")
+            return False
 
-        if not self.index_dir.exists() or not any(self.index_dir.iterdir()):
-            raise FileNotFoundError(f"Index directory {self.index_dir} is missing or empty.")
-
-        index.deserialize_from(self.index_dir)
-
-        logging.info(f"Loaded index from {self.index_dir}")
-        return index
+    def get_index_stats(self) -> dict:
+        """Get statistics about the built index."""
+        try:
+            index = self.load_index()
+            stats = {
+                "index_type": "contriever",
+                "vector_dimension": 768,
+                "index_directory": str(self.index_dir),
+                "encoder_model": self.encoder_name
+            }
+            
+            if hasattr(index, 'index') and hasattr(index.index, 'ntotal'):
+                stats["num_vectors"] = index.index.ntotal
+            
+            # Check index directory size
+            total_size = sum(f.stat().st_size for f in self.index_dir.rglob('*') if f.is_file())
+            stats["index_size_mb"] = total_size / (1024 * 1024)
+            
+            return stats
+            
+        except Exception as e:
+            logging.error(f"Error getting index stats: {e}")
+            return {"error": str(e)}

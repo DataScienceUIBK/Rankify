@@ -98,7 +98,6 @@ class LiT5DistillReranker(BaseRanking):
                 {"docid": ctx.id, "doc": {"text": ctx.text} , "score": ctx.score } for ctx in document.contexts
             ]
         )
-        #print("Hello")
         rank_start= 0
         rank_end = 100
         window_size = 20
@@ -119,14 +118,21 @@ class LiT5DistillReranker(BaseRanking):
             # Create a mapping from docid to the original context
         
         contexts = copy.deepcopy(document.contexts)
-        docid_to_context = {ctx.id: ctx for ctx in contexts}
+        docid_to_context = {str(ctx.id): ctx for ctx in contexts}
+        #print("Hello")
+        #print(docid_to_context)
+        #print(reranked_result.candidates)
         # Reorder contexts based on reranked_result
         reorder_contexts = []
         for candidate in reranked_result.candidates:
+            #print(candidate)
             d = docid_to_context[str(candidate["docid"])]
+            #print(d)
             d.score = candidate["score"]
             reorder_contexts.append(d)
         document.reorder_contexts = reorder_contexts
+        
+        print(document.reorder_contexts)
         return document
         
 
@@ -216,7 +222,7 @@ class LiT5ScoreReranker(BaseRanking):
 
         # Create a mapping from docid to the original context
         contexts = copy.deepcopy(document.contexts)
-        docid_to_context = {ctx.id: ctx for ctx in contexts}
+        docid_to_context = {str(ctx.id): ctx for ctx in contexts}
         # Reorder contexts based on reranked_result
         reorder_contexts = []
         for candidate in reranked_result.candidates:

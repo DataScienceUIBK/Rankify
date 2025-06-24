@@ -3,11 +3,12 @@ import argparse
 from rankify.indexing.colbert_indexer import ColBERTIndexer
 from rankify.indexing.lucene_indexer import LuceneIndexer
 from rankify.indexing.dpr_indexer import DPRIndexer
+from rankify.indexing.ance_indexer import ANCEIndexer  # NEW IMPORT
 from rankify.indexing.contriever_indexer import ContrieverIndexer
 from rankify.indexing.bge_indexer import BGEIndexer
 from pathlib import Path
 
-SUPPORTED_RETRIEVERS = ["bm25", "dpr", "contriever", "colbert", "bge"]
+SUPPORTED_RETRIEVERS = ["bm25", "dpr", "ance", "contriever", "colbert", "bge"]  # ADDED "ance"
 
 def handle_output_directory(output_dir):
     """
@@ -57,7 +58,7 @@ def main():
     index_parser.add_argument("--output", default="rankify_indices", help="Output directory for index")
     index_parser.add_argument("--chunk_size", type=int, help="Lines per chunk")
     index_parser.add_argument("--threads", type=int, default=32, help="Thread count for processing")
-    index_parser.add_argument("--index_type", type=str, default="wiki", help="Type of index to create (default: wiki)")
+    index_parser.add_argument("--index_type", type=str, default="", help="Type of index to create (default: wiki)")
 
     # Dense-specific option
     index_parser.add_argument("--encoder", type=str, help="Encoder model name for dense indexing")
@@ -69,7 +70,7 @@ def main():
     if args.command == "index":
         handle_output_directory(args.output)
         args.retriever = args.retriever.lower()
-
+        print(args)
         if args.retriever == "bm25":
             indexer = LuceneIndexer(**get_indexer_args(args))
             indexer.build_index()
@@ -94,6 +95,18 @@ def main():
                 indexer.load_index()
 
                 print("DPR indexing complete.")
+
+        # NEW ANCE BLOCK
+        elif args.retriever == "ance":
+            if args.encoder is None:
+                args.encoder = "castorini/ance-msmarco-passage"
+                print("No encoder specified. Using default: castorini/ance-msmarco-passage")
+
+            indexer = ANCEIndexer(**get_indexer_args(args))
+            indexer.build_index()
+            indexer.load_index()
+
+            print("ANCE indexing complete.")
 
         elif args.retriever == "contriever":
             if args.encoder is None:
@@ -129,3 +142,6 @@ def main():
             print("BGE indexing complete.")
         else:
             print(f"Unknown retriever type: {args.retriever}. Supported types are {SUPPORTED_RETRIEVERS}.")
+
+if __name__ == "__main__":
+    main()
