@@ -14,9 +14,17 @@ contexts = [
 # Construct document
 doc = Document(question=question, answers=answers, contexts=contexts)
 
+custom_prompt = (
+    "Please answer the following question using only the provided context.\n"
+    "Q: {question}\n"
+    "Context:\n{contexts}\n"
+    "A:"
+)
+
+
 # Initialize Generator (e.g., Meta Llama)
-generator = Generator(method="chain-of-thought-rag", model_name='meta-llama/Meta-Llama-3.1-8B-Instruct', backend="huggingface", torch_dtype=torch.float16)
+generator = Generator(method="basic-rag", model_name='meta-llama/Meta-Llama-3.1-8B-Instruct', backend="huggingface", torch_dtype=torch.float16)
 
 # Generate answer
-generated_answers = generator.generate([doc])
+generated_answers = generator.generate([doc], custom_prompt=custom_prompt)
 print(generated_answers)  # Output: ["Paris"]

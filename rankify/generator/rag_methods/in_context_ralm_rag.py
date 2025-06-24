@@ -144,7 +144,7 @@ class InContextRALMRAG(BaseRAGMethod):
 
         return examples
 
-    def answer_questions(self, documents: List[Document]) -> List[str]:
+    def answer_questions(self, documents: List[Document], custom_prompt=None) -> List[str]:
         """
         Generates answers for **a list of documents** using RALM.
 

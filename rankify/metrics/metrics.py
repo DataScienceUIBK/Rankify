@@ -66,6 +66,28 @@ class BaseMetric:
         """
         return {}, []
 
+    # def get_dataset_answer(self, data):
+    #     """
+    #     Extracts ground-truth answers from dataset.
+
+    #     Args:
+    #         data: Data object containing documents.
+
+    #     Returns:
+    #         list: List of ground-truth answers.
+    #     """
+    #     answers_list = []
+    #     for doc in data.documents:
+    #         ans = doc.answers
+    #         if hasattr(ans, "answers"):
+    #             answers_list.append(ans.answers)
+    #         elif isinstance(ans, (list, tuple)):
+    #             answers_list.append(list(ans))
+    #         elif isinstance(ans, str):
+    #             answers_list.append([ans])
+    #         else:
+    #             answers_list.append([str(ans)])
+    #     return answers_list
     def get_dataset_answer(self, data):
         """
         Extracts ground-truth answers from dataset.
@@ -76,9 +98,8 @@ class BaseMetric:
         Returns:
             list: List of ground-truth answers.
         """
+        #print(data.doc)
         return [doc.answers.answers for doc in data.documents]
-
-
 ### **Generation Metrics (Exact Match, F1, Precision, Recall, BLEU)**
 
 class ExactMatch(BaseMetric):
@@ -100,6 +121,7 @@ class ExactMatch(BaseMetric):
         Returns:
             float: **1.0** if there is an exact match, else **0.0**.
         """
+
         normalized_prediction = normalize_answer(prediction)
         for answer in golden_answers:
             if normalize_answer(answer) == normalized_prediction:
@@ -408,6 +430,7 @@ class Metrics:
             documents (list): List of **Document** instances.
         """
         self.documents = documents
+        print()
         self.config = {"dataset_name": "QA_Evaluation"}
 
     def top_k_accuracy(self, k, use_reordered=False):
