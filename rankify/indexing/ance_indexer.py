@@ -41,7 +41,7 @@ class ANCEIndexer(BaseIndexer):
 
     def __init__(self,
                  corpus_path,
-                 encoder_name="castorini/ance-msmarco-passage",  # ✅ FIXED: Same default as retriever
+                 encoder_name="castorini/ance-dpr-context-multi",  # ✅ FIXED: Same default as retriever
                  output_dir="ance_indices",
                  chunk_size=100,
                  threads=32,
@@ -259,7 +259,7 @@ class ANCEIndexer(BaseIndexer):
         index.add(embeddings)
         
         # Save FAISS index
-        faiss_index_file = self.index_dir / "index.faiss"
+        faiss_index_file = self.index_dir / "index"
         faiss.write_index(index, str(faiss_index_file))
         
         # Create docid file (required by some FAISS searchers)
