@@ -6,6 +6,7 @@ class PromptTemplate(Enum):
     CHAIN_OF_THOUGHT_RAG = "chain-of-thought-rag"
     ZERO_SHOT = "zero-shot"
     SELF_CONSISTENCY_RAG = "self-consistency-rag"
+    REACT_RAG = "react-rag"
 
 DEFAULT_PROMPTS = {
     PromptTemplate.BASIC_RAG: (
@@ -32,4 +33,13 @@ DEFAULT_PROMPTS = {
         "Question: {question}\n"
         "Answer:"
     ),
+    PromptTemplate.REACT_RAG: (
+        "You are an expert assistant. You can reason step by step and use external search when needed.\n"
+        "When you need more information, write Search[query].\n"
+        "After each search, you will be given the result as Observation: ...\n"
+        "Continue until you can answer the question.\n"
+        "Question: {question}\n"
+        "Contexts:\n{contexts}\n"
+        "Thought:"
+    )
 }
