@@ -34,6 +34,9 @@ class HuggingFaceModel(BaseRAGModel):
         kwargs.setdefault("num_return_sequences", 1)
         kwargs.setdefault("eos_token_id", self.tokenizer.eos_token_id)
         kwargs.setdefault("pad_token_id", self.tokenizer.eos_token_id)
+        kwargs.setdefault("temperature", 0.1)
+        kwargs.setdefault("top_p", 1.0)
+        print(f"Generating with prompt: {prompt}")
 
         outputs = self.model.generate(**inputs, **kwargs)
 
