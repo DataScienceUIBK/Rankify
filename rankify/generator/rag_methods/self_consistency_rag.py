@@ -48,7 +48,7 @@ class SelfConsistencyRAG(BaseRAGMethod):
             else:
                 # Majority vote (with normalization)
                 def normalize(text):
-                    return text.lower().strip()
+                    return text.strip()
                 normalized = [normalize(ans) for ans in sample_answers]
                 most_common, _ = Counter(normalized).most_common(1)[0]
                 answers.append(most_common)
