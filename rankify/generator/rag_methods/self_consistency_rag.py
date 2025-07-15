@@ -23,7 +23,7 @@ class SelfConsistencyRAG(BaseRAGMethod):
             # Generate multiple answers in one call
             sample_answers = self.model.generate(
                 prompt=prompt,
-                do_sample=True,
+                #do_sample=True,
                 num_return_sequences=self.num_samples,
                 **kwargs
             )
