@@ -2,6 +2,7 @@ from typing import List
 from rankify.generator.models.base_rag_model import BaseRAGModel
 from rankify.dataset.dataset import Document
 from rankify.generator.rag_methods.base_rag_method import BaseRAGMethod
+from tqdm.auto import tqdm 
 
 class ZeroShotRAG(BaseRAGMethod):
     """
@@ -36,7 +37,7 @@ class ZeroShotRAG(BaseRAGMethod):
         """
         answers = []
 
-        for document in documents:
+        for document in tqdm(documents, desc="Answering questions", unit="q"):
             # Extract question and contexts from the document
             question = document.question.question
             

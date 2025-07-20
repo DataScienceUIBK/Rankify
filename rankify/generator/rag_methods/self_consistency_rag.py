@@ -3,6 +3,7 @@ from collections import Counter
 from rankify.generator.models.base_rag_model import BaseRAGModel
 from rankify.dataset.dataset import Document, Answer
 from rankify.generator.rag_methods.base_rag_method import BaseRAGMethod
+from tqdm.auto import tqdm 
 
 class SelfConsistencyRAG(BaseRAGMethod):
     def __init__(self, model: BaseRAGModel, num_samples: int = 5, reranker=None, **kwargs):
@@ -15,7 +16,7 @@ class SelfConsistencyRAG(BaseRAGMethod):
         For each document, generate multiple answers and aggregate by majority vote or reranker.
         """
         answers = []
-        for document in documents:
+        for document in tqdm(documents, desc="Answering questions", unit="q"):
             question = document.question.question
             contexts = [context.text for context in document.contexts]
             prompt = self.model.prompt_generator.generate_user_prompt(question, contexts, custom_prompt)

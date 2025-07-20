@@ -132,7 +132,7 @@ class LiT5DistillReranker(BaseRanking):
             reorder_contexts.append(d)
         document.reorder_contexts = reorder_contexts
         
-        print(document.reorder_contexts)
+        #print(document.reorder_contexts)
         return document
         
 

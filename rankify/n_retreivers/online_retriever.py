@@ -53,7 +53,7 @@ class OnlineRetriever:
                 #     f.writelines(html)
                 if text:
                     passages = self.chunker.split_text(text)
-                    print(len(passages), "passages found")
+                    #print(len(passages), "passages found")
                     for p_idx, p in enumerate(passages):
                         #print(p)
                         

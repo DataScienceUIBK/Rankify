@@ -164,7 +164,7 @@ class InContextRALMRAG(BaseRAGMethod):
         eval_dataset = self._prepare_dataloader(documents)
 
         results = []
-        for example in tqdm(eval_dataset, desc="Generating responses"):
+        for example in tqdm(eval_dataset, desc="Answering questions", unit="q"):
             prompt = self._build_qa_prompt(example)
 
             tokenized_input = self.tokenizer(prompt, return_tensors="pt", padding=True, truncation=True)

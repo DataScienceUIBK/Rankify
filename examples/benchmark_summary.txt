@@ -1,0 +1,118 @@
+Benchmark Results Summary:
+
+Model: meta-llama/Meta-Llama-3.1-8B-Instruct
+  Dataset: web_questions-test
+    basic-rag: {'exact_match': 12.844488188976378, 'f1_score': 27.039468921299225, 'precision': 25.355485603888106, 'recall': 52.23317044251649, 'contains_match': 42.02755905511811}
+
+Model: meta-llama/Meta-Llama-3.1-8B-Instruct
+  Dataset: web_questions-test
+    basic-rag: {'exact_match': 12.844488188976378, 'f1_score': 27.039468921299225, 'precision': 25.355485603888106, 'recall': 52.23317044251649, 'contains_match': 42.02755905511811}
+    chain-of-thought-rag: {'exact_match': 5.7578740157480315, 'f1_score': 18.825432917440228, 'precision': 15.47956333369942, 'recall': 53.057221514518446, 'contains_match': 41.24015748031496}
+
+Model: meta-llama/Meta-Llama-3.1-8B-Instruct
+  Dataset: web_questions-test
+    basic-rag: {'exact_match': 12.844488188976378, 'f1_score': 27.039468921299225, 'precision': 25.355485603888106, 'recall': 52.23317044251649, 'contains_match': 42.02755905511811}
+    chain-of-thought-rag: {'exact_match': 5.7578740157480315, 'f1_score': 18.825432917440228, 'precision': 15.47956333369942, 'recall': 53.057221514518446, 'contains_match': 41.24015748031496}
+    fid: {'exact_match': 0.0, 'f1_score': 0.0, 'precision': 0.0, 'recall': 0.0, 'contains_match': 0.0}
+
+Model: meta-llama/Meta-Llama-3.1-8B-Instruct
+  Dataset: web_questions-test
+    basic-rag: {'exact_match': 12.844488188976378, 'f1_score': 27.039468921299225, 'precision': 25.355485603888106, 'recall': 52.23317044251649, 'contains_match': 42.02755905511811}
+    chain-of-thought-rag: {'exact_match': 5.7578740157480315, 'f1_score': 18.825432917440228, 'precision': 15.47956333369942, 'recall': 53.057221514518446, 'contains_match': 41.24015748031496}
+    fid: {'exact_match': 0.0, 'f1_score': 0.0, 'precision': 0.0, 'recall': 0.0, 'contains_match': 0.0}
+    in-context-ralm: {'exact_match': 0.0, 'f1_score': 0.0, 'precision': 0.0, 'recall': 0.0, 'contains_match': 0.0}
+
+Model: meta-llama/Meta-Llama-3.1-8B-Instruct
+  Dataset: web_questions-test
+    basic-rag: {'exact_match': 12.844488188976378, 'f1_score': 27.039468921299225, 'precision': 25.355485603888106, 'recall': 52.23317044251649, 'contains_match': 42.02755905511811}
+    chain-of-thought-rag: {'exact_match': 5.7578740157480315, 'f1_score': 18.825432917440228, 'precision': 15.47956333369942, 'recall': 53.057221514518446, 'contains_match': 41.24015748031496}
+    fid: {'exact_match': 0.0, 'f1_score': 0.0, 'precision': 0.0, 'recall': 0.0, 'contains_match': 0.0}
+    in-context-ralm: {'exact_match': 0.0, 'f1_score': 0.0, 'precision': 0.0, 'recall': 0.0, 'contains_match': 0.0}
+    zero-shot: {'exact_match': 3.346456692913386, 'f1_score': 14.770154967292697, 'precision': 10.947808615959822, 'recall': 54.9273480326255, 'contains_match': 40.6496062992126}
+
+Model: meta-llama/Meta-Llama-3.1-8B-Instruct
+  Dataset: web_questions-test
+    basic-rag: {'exact_match': 12.844488188976378, 'f1_score': 27.039468921299225, 'precision': 25.355485603888106, 'recall': 52.23317044251649, 'contains_match': 42.02755905511811}
+    chain-of-thought-rag: {'exact_match': 5.7578740157480315, 'f1_score': 18.825432917440228, 'precision': 15.47956333369942, 'recall': 53.057221514518446, 'contains_match': 41.24015748031496}
+    fid: {'exact_match': 0.0, 'f1_score': 0.0, 'precision': 0.0, 'recall': 0.0, 'contains_match': 0.0}
+    in-context-ralm: {'exact_match': 0.0, 'f1_score': 0.0, 'precision': 0.0, 'recall': 0.0, 'contains_match': 0.0}
+    zero-shot: {'exact_match': 3.346456692913386, 'f1_score': 14.770154967292697, 'precision': 10.947808615959822, 'recall': 54.9273480326255, 'contains_match': 40.6496062992126}
+    self-consistency-rag: {'exact_match': 0.0, 'f1_score': 0.0, 'precision': 0.0, 'recall': 0.0, 'contains_match': 0.0}
+
+Model: meta-llama/Meta-Llama-3.1-8B-Instruct
+  Dataset: nq-test
+    basic-rag: {'exact_match': 17.008310249307478, 'f1_score': 27.75387508246729, 'precision': 25.866337076941015, 'recall': 48.56740535549398, 'contains_match': 41.21883656509695}
+
+Model: meta-llama/Meta-Llama-3.1-8B-Instruct
+  Dataset: nq-test
+    basic-rag: {'exact_match': 17.008310249307478, 'f1_score': 27.75387508246729, 'precision': 25.866337076941015, 'recall': 48.56740535549398, 'contains_match': 41.21883656509695}
+    chain-of-thought-rag: {'exact_match': 9.916897506925208, 'f1_score': 20.21532994886603, 'precision': 17.363786916876144, 'recall': 47.39843028624191, 'contains_match': 40.554016620498615}
+
+Model: meta-llama/Meta-Llama-3.1-8B-Instruct
+  Dataset: nq-test
+    basic-rag: {'exact_match': 17.008310249307478, 'f1_score': 27.75387508246729, 'precision': 25.866337076941015, 'recall': 48.56740535549398, 'contains_match': 41.21883656509695}
+    chain-of-thought-rag: {'exact_match': 9.916897506925208, 'f1_score': 20.21532994886603, 'precision': 17.363786916876144, 'recall': 47.39843028624191, 'contains_match': 40.554016620498615}
+    fid: {'exact_match': 0.13850415512465375, 'f1_score': 0.0, 'precision': 0.0, 'recall': 0.0, 'contains_match': 0.13850415512465375}
+
+Model: meta-llama/Meta-Llama-3.1-8B-Instruct
+  Dataset: nq-test
+    basic-rag: {'exact_match': 17.008310249307478, 'f1_score': 27.75387508246729, 'precision': 25.866337076941015, 'recall': 48.56740535549398, 'contains_match': 41.21883656509695}
+    chain-of-thought-rag: {'exact_match': 9.916897506925208, 'f1_score': 20.21532994886603, 'precision': 17.363786916876144, 'recall': 47.39843028624191, 'contains_match': 40.554016620498615}
+    fid: {'exact_match': 0.13850415512465375, 'f1_score': 0.0, 'precision': 0.0, 'recall': 0.0, 'contains_match': 0.13850415512465375}
+    in-context-ralm: {'exact_match': 0.13850415512465375, 'f1_score': 0.0, 'precision': 0.0, 'recall': 0.0, 'contains_match': 0.13850415512465375}
+
+Model: meta-llama/Meta-Llama-3.1-8B-Instruct
+  Dataset: nq-test
+    basic-rag: {'exact_match': 17.008310249307478, 'f1_score': 27.75387508246729, 'precision': 25.866337076941015, 'recall': 48.56740535549398, 'contains_match': 41.21883656509695}
+    chain-of-thought-rag: {'exact_match': 9.916897506925208, 'f1_score': 20.21532994886603, 'precision': 17.363786916876144, 'recall': 47.39843028624191, 'contains_match': 40.554016620498615}
+    fid: {'exact_match': 0.13850415512465375, 'f1_score': 0.0, 'precision': 0.0, 'recall': 0.0, 'contains_match': 0.13850415512465375}
+    in-context-ralm: {'exact_match': 0.13850415512465375, 'f1_score': 0.0, 'precision': 0.0, 'recall': 0.0, 'contains_match': 0.13850415512465375}
+    zero-shot: {'exact_match': 4.875346260387812, 'f1_score': 13.541426595345902, 'precision': 10.393133977557756, 'recall': 45.30378578024003, 'contains_match': 36.86980609418283}
+
+Model: meta-llama/Meta-Llama-3.1-8B-Instruct
+  Dataset: nq-test
+    basic-rag: {'exact_match': 17.008310249307478, 'f1_score': 27.75387508246729, 'precision': 25.866337076941015, 'recall': 48.56740535549398, 'contains_match': 41.21883656509695}
+    chain-of-thought-rag: {'exact_match': 9.916897506925208, 'f1_score': 20.21532994886603, 'precision': 17.363786916876144, 'recall': 47.39843028624191, 'contains_match': 40.554016620498615}
+    fid: {'exact_match': 0.13850415512465375, 'f1_score': 0.0, 'precision': 0.0, 'recall': 0.0, 'contains_match': 0.13850415512465375}
+    in-context-ralm: {'exact_match': 0.13850415512465375, 'f1_score': 0.0, 'precision': 0.0, 'recall': 0.0, 'contains_match': 0.13850415512465375}
+    zero-shot: {'exact_match': 4.875346260387812, 'f1_score': 13.541426595345902, 'precision': 10.393133977557756, 'recall': 45.30378578024003, 'contains_match': 36.86980609418283}
+    self-consistency-rag: {'exact_match': 0.13850415512465375, 'f1_score': 0.0, 'precision': 0.0, 'recall': 0.0, 'contains_match': 0.13850415512465375}
+
+Model: meta-llama/Meta-Llama-3.1-8B-Instruct
+  Dataset: triviaqa-test
+    basic-rag: {'exact_match': 31.32679218598073, 'f1_score': 44.45901580802395, 'precision': 41.463968323901945, 'recall': 69.96415212183048, 'contains_match': 66.96720586935385}
+
+Model: meta-llama/Meta-Llama-3.1-8B-Instruct
+  Dataset: triviaqa-test
+    basic-rag: {'exact_match': 31.32679218598073, 'f1_score': 44.45901580802395, 'precision': 41.463968323901945, 'recall': 69.96415212183048, 'contains_match': 66.96720586935385}
+    chain-of-thought-rag: {'exact_match': 18.2975338106603, 'f1_score': 31.489829031607847, 'precision': 27.282215659031696, 'recall': 71.34741970868077, 'contains_match': 68.36382922301777}
+
+Model: meta-llama/Meta-Llama-3.1-8B-Instruct
+  Dataset: triviaqa-test
+    basic-rag: {'exact_match': 31.32679218598073, 'f1_score': 44.45901580802395, 'precision': 41.463968323901945, 'recall': 69.96415212183048, 'contains_match': 66.96720586935385}
+    chain-of-thought-rag: {'exact_match': 18.2975338106603, 'f1_score': 31.489829031607847, 'precision': 27.282215659031696, 'recall': 71.34741970868077, 'contains_match': 68.36382922301777}
+    fid: {'exact_match': 9.254839565102095, 'f1_score': 0.0, 'precision': 0.0, 'recall': 0.0, 'contains_match': 9.254839565102095}
+
+Model: meta-llama/Meta-Llama-3.1-8B-Instruct
+  Dataset: triviaqa-test
+    basic-rag: {'exact_match': 31.32679218598073, 'f1_score': 44.45901580802395, 'precision': 41.463968323901945, 'recall': 69.96415212183048, 'contains_match': 66.96720586935385}
+    chain-of-thought-rag: {'exact_match': 18.2975338106603, 'f1_score': 31.489829031607847, 'precision': 27.282215659031696, 'recall': 71.34741970868077, 'contains_match': 68.36382922301777}
+    fid: {'exact_match': 9.254839565102095, 'f1_score': 0.0, 'precision': 0.0, 'recall': 0.0, 'contains_match': 9.254839565102095}
+    in-context-ralm: {'exact_match': 9.254839565102095, 'f1_score': 0.0, 'precision': 0.0, 'recall': 0.0, 'contains_match': 9.254839565102095}
+
+Model: meta-llama/Meta-Llama-3.1-8B-Instruct
+  Dataset: triviaqa-test
+    basic-rag: {'exact_match': 31.32679218598073, 'f1_score': 44.45901580802395, 'precision': 41.463968323901945, 'recall': 69.96415212183048, 'contains_match': 66.96720586935385}
+    chain-of-thought-rag: {'exact_match': 18.2975338106603, 'f1_score': 31.489829031607847, 'precision': 27.282215659031696, 'recall': 71.34741970868077, 'contains_match': 68.36382922301777}
+    fid: {'exact_match': 9.254839565102095, 'f1_score': 0.0, 'precision': 0.0, 'recall': 0.0, 'contains_match': 9.254839565102095}
+    in-context-ralm: {'exact_match': 9.254839565102095, 'f1_score': 0.0, 'precision': 0.0, 'recall': 0.0, 'contains_match': 9.254839565102095}
+    zero-shot: {'exact_match': 24.67957217360559, 'f1_score': 35.425951728852056, 'precision': 32.22810495746277, 'recall': 67.60979066098615, 'contains_match': 63.899938124281796}
+
+Model: meta-llama/Meta-Llama-3.1-8B-Instruct
+  Dataset: triviaqa-test
+    basic-rag: {'exact_match': 31.32679218598073, 'f1_score': 44.45901580802395, 'precision': 41.463968323901945, 'recall': 69.96415212183048, 'contains_match': 66.96720586935385}
+    chain-of-thought-rag: {'exact_match': 18.2975338106603, 'f1_score': 31.489829031607847, 'precision': 27.282215659031696, 'recall': 71.34741970868077, 'contains_match': 68.36382922301777}
+    fid: {'exact_match': 9.254839565102095, 'f1_score': 0.0, 'precision': 0.0, 'recall': 0.0, 'contains_match': 9.254839565102095}
+    in-context-ralm: {'exact_match': 9.254839565102095, 'f1_score': 0.0, 'precision': 0.0, 'recall': 0.0, 'contains_match': 9.254839565102095}
+    zero-shot: {'exact_match': 24.67957217360559, 'f1_score': 35.425951728852056, 'precision': 32.22810495746277, 'recall': 67.60979066098615, 'contains_match': 63.899938124281796}
+    self-consistency-rag: {'exact_match': 9.254839565102095, 'f1_score': 0.0, 'precision': 0.0, 'recall': 0.0, 'contains_match': 9.254839565102095}

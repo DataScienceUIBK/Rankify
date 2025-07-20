@@ -125,7 +125,7 @@ class Context:
         title (str, optional): The title of the context.
         text (str, optional): The text of the context.
     """
-    def __init__(self, score: float=None, has_answer: bool=None, id: int=None, title: str=None, text: str=None)-> None:
+    def __init__(self, score: float=None, has_answer: bool=None, id: str=None, title: str=None, text: str=None)-> None:
         """
         Initializes a Context instance.
 
@@ -607,6 +607,8 @@ class Dataset:
                 dpr_entry["reranked_ctxs"] = [ctx.to_dict(save_text) for ctx in doc.reorder_contexts]
 
             dpr_data.append(dpr_entry)
+        
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
         if output_path.endswith(".json"):
             with open(output_path, "w", encoding="utf-8") as file:
