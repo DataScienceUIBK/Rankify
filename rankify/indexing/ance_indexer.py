@@ -1,4 +1,4 @@
-# rankify/indexing/ance_indexer.py - FIXED VERSION
+# rankify/indexing/ance_indexer.py - FIXED VERSION WITH CORRECT ID EXTRACTION
 import shutil
 import logging
 import json
@@ -16,21 +16,16 @@ logging.basicConfig(level=logging.INFO)
 
 class ANCEIndexer(BaseIndexer):
     """
-    FIXED ANCE Indexer using proper ANCE models.
+    FIXED ANCE Indexer with proper ID extraction.
     
     Key fixes:
-    - Uses single model for both indexing and retrieval (same as ANCE paper)
-    - Defaults to proper castorini/ance-msmarco-passage model
-    - Consistent with ANCERetriever
-    
-    Supported models:
-    - castorini/ance-msmarco-passage (recommended - works for both queries and passages)
-    - castorini/ance-msmarco-doc-maxp
-    - castorini/ance-msmarco-doc-firstp
+    - Correctly extracts document IDs from corpus
+    - Proper mapping between FAISS sequential IDs and original document IDs
+    - Handles various document ID field names
     
     Args:
         corpus_path (str): Path to the corpus file.
-        encoder_name (str): ANCE model name (default: castorini/ance-msmarco-passage).
+        encoder_name (str): ANCE model name (default: castorini/ance-dpr-context-multi).
         output_dir (str): Directory to save the index.
         chunk_size (int): Size of chunks to process the corpus.
         threads (int): Number of threads to use for processing.
@@ -41,7 +36,7 @@ class ANCEIndexer(BaseIndexer):
 
     def __init__(self,
                  corpus_path,
-                 encoder_name="castorini/ance-dpr-context-multi",  # ✅ FIXED: Same default as retriever
+                 encoder_name="castorini/ance-dpr-context-multi",
                  output_dir="ance_indices",
                  chunk_size=100,
                  threads=32,
@@ -115,14 +110,55 @@ class ANCEIndexer(BaseIndexer):
         
         return embeddings.detach().cpu().numpy()
 
+    def _extract_document_id(self, doc, line_idx):
+        """
+        Extract document ID from a document, trying multiple field names.
+        
+        Args:
+            doc (dict): Document dictionary
+            line_idx (int): Line index as fallback
+            
+        Returns:
+            str: Document ID
+        """
+        # Try common field names for document ID
+        possible_id_fields = ['id', 'docid', '_id', 'doc_id', 'document_id']
+        
+        for field in possible_id_fields:
+            if field in doc and doc[field] is not None:
+                doc_id = str(doc[field]).strip()
+                if doc_id:  # Make sure it's not empty
+                    # DEBUG: Log successful ID extraction
+                    if line_idx < 10:
+                        logging.info(f"DEBUG: Extracted doc_id='{doc_id}' from field '{field}' on line {line_idx}")
+                    return doc_id
+        
+        # If no ID found, use line index as fallback
+        fallback_id = f"doc_{line_idx}"
+        if line_idx < 10:
+            logging.info(f"DEBUG: No ID found, using fallback '{fallback_id}' on line {line_idx}")
+        return fallback_id
+
     def _create_id_mapping(self, doc_ids):
         """Create mapping between FAISS sequential IDs and original document IDs."""
         logging.info("Creating ID mapping for FAISS index...")
         
-        faiss_to_docid = {i: str(doc_id) for i, doc_id in enumerate(doc_ids)}
-        docid_to_faiss = {str(doc_id): i for i, doc_id in enumerate(doc_ids)}
+        # FAISS uses sequential integer IDs (0, 1, 2, ...)
+        # We need to map these to original document IDs
+        faiss_to_docid = {}
+        docid_to_faiss = {}
+        
+        for faiss_id, original_doc_id in enumerate(doc_ids):
+            faiss_to_docid[str(faiss_id)] = str(original_doc_id)
+            docid_to_faiss[str(original_doc_id)] = str(faiss_id)
         
         logging.info(f"Created ID mapping for {len(faiss_to_docid)} documents")
+        
+        # DEBUG: Print first few mappings to verify
+        logging.info("DEBUG: First 5 ID mappings:")
+        for i, (faiss_id, original_id) in enumerate(list(faiss_to_docid.items())[:5]):
+            logging.info(f"  FAISS ID '{faiss_id}' -> Original ID '{original_id}'")
+        
         return faiss_to_docid, docid_to_faiss
 
     def _save_id_mapping(self, faiss_to_docid, docid_to_faiss):
@@ -139,31 +175,133 @@ class ANCEIndexer(BaseIndexer):
             
         logging.info(f"ID mappings saved to {self.index_dir}")
 
-    def _save_corpus_metadata(self, corpus_file, doc_ids):
-        """Save corpus metadata for retrieval."""
+    def _save_corpus_metadata_simple(self, doc_ids, doc_metadata):
+        """Save corpus metadata using perfectly aligned doc_ids and doc_metadata."""
+        logging.info("Saving corpus metadata...")
+        
+        if len(doc_ids) != len(doc_metadata):
+            raise ValueError(f"Mismatch: {len(doc_ids)} doc_ids but {len(doc_metadata)} doc_metadata")
+        
+        corpus_metadata = {}
+        
+        for i, (doc_id, doc) in enumerate(zip(doc_ids, doc_metadata)):
+            # Extract title and contents
+            contents = doc.get('contents', '') or doc.get('text', '') or doc.get('content', '')
+            title = doc.get('title', '')
+            
+            # If no explicit title, try to extract from contents
+            if not title and contents:
+                lines = contents.split('\n')
+                title = lines[0][:100] if lines else "No Title"  # Limit title length
+            
+            # DEBUG: Log first few entries
+            if i < 5:
+                logging.info(f"DEBUG: Saving metadata for doc_id='{doc_id}', title='{title}', contents_length={len(contents)}")
+            
+            corpus_metadata[str(doc_id)] = {
+                'title': title,
+                'contents': contents,
+                'text': contents
+            }
+        
+        logging.info(f"Saved metadata for {len(corpus_metadata)} documents")
+        logging.info(f"Metadata keys: {list(corpus_metadata.keys())[:5]}")  # Show first 5 keys
+        
+        # Save corpus metadata
+        corpus_metadata_file = self.index_dir / "corpus_metadata.json"
+        with open(corpus_metadata_file, 'w', encoding='utf-8') as f:
+            json.dump(corpus_metadata, f, indent=2, ensure_ascii=False)
+            
+        logging.info(f"Corpus metadata saved to {corpus_metadata_file}")
+
+    def _save_corpus_metadata_from_documents(self, valid_documents, doc_ids):
+        """Save corpus metadata using the same documents that were processed."""
         logging.info("Saving corpus metadata...")
         
         corpus_metadata = {}
         
-        with open(corpus_file, 'r', encoding='utf-8') as f:
-            for line_idx, line in enumerate(f):
-                doc = json.loads(line.strip())
-                doc_id = doc_ids[line_idx] if line_idx < len(doc_ids) else f"doc_{line_idx}"
+        # FIXED: Use the actual doc_ids that were collected, not the loop index
+        for i, doc_id in enumerate(doc_ids):
+            if i < len(valid_documents):
+                doc_info = valid_documents[i]
+                original_doc = doc_info['original_doc']
                 
                 # Extract title and contents
-                contents = doc.get('contents', '') or doc.get('text', '')
-                title = doc.get('title', '')
+                contents = original_doc.get('contents', '') or original_doc.get('text', '') or original_doc.get('content', '')
+                title = original_doc.get('title', '')
                 
                 # If no explicit title, try to extract from contents
                 if not title and contents:
                     lines = contents.split('\n')
-                    title = lines[0] if lines else "No Title"
+                    title = lines[0][:100] if lines else "No Title"  # Limit title length
+                
+                # DEBUG: Log what we're saving
+                logging.info(f"DEBUG: Saving metadata for doc_id='{doc_id}', title='{title}', contents_length={len(contents)}")
                 
                 corpus_metadata[str(doc_id)] = {
                     'title': title,
                     'contents': contents,
                     'text': contents
                 }
+        
+        logging.info(f"Saved metadata for {len(corpus_metadata)} documents")
+        logging.info(f"Metadata keys: {list(corpus_metadata.keys())[:5]}")  # Show first 5 keys
+        
+        # Save corpus metadata
+        corpus_metadata_file = self.index_dir / "corpus_metadata.json"
+        with open(corpus_metadata_file, 'w', encoding='utf-8') as f:
+            json.dump(corpus_metadata, f, indent=2, ensure_ascii=False)
+            
+        logging.info(f"Corpus metadata saved to {corpus_metadata_file}")
+
+    def _save_corpus_metadata(self, corpus_file, doc_ids):
+        """Save corpus metadata for retrieval."""
+        logging.info("Saving corpus metadata...")
+        
+        corpus_metadata = {}
+        
+        # FIXED: Use the same doc_ids that were actually processed
+        # Don't re-read the corpus, use the doc_ids we already collected
+        with open(corpus_file, 'r', encoding='utf-8') as f:
+            processed_count = 0
+            for line_idx, line in enumerate(f):
+                try:
+                    doc = json.loads(line.strip())
+                except json.JSONDecodeError:
+                    continue
+                
+                # Extract text content (same logic as build_index)
+                text = doc.get('contents', '') or doc.get('text', '') or doc.get('content', '')
+                
+                # Skip empty documents (same logic as build_index)
+                if not text.strip():
+                    continue
+                
+                # Use the doc_id from our processed list
+                if processed_count < len(doc_ids):
+                    doc_id = doc_ids[processed_count]
+                else:
+                    logging.warning(f"Metadata processing: More documents than expected at line {line_idx}")
+                    break
+                
+                # Extract title and contents
+                contents = doc.get('contents', '') or doc.get('text', '') or doc.get('content', '')
+                title = doc.get('title', '')
+                
+                # If no explicit title, try to extract from contents
+                if not title and contents:
+                    lines = contents.split('\n')
+                    title = lines[0][:100] if lines else "No Title"  # Limit title length
+                
+                corpus_metadata[str(doc_id)] = {
+                    'title': title,
+                    'contents': contents,
+                    'text': contents
+                }
+                
+                processed_count += 1
+        
+        logging.info(f"Saved metadata for {len(corpus_metadata)} documents")
         
         # Save corpus metadata
         corpus_metadata_file = self.index_dir / "corpus_metadata.json"
@@ -195,14 +333,15 @@ class ANCEIndexer(BaseIndexer):
         Build the ANCE dense index using FAISS.
         
         Steps:
-        1. Convert corpus to proper format
+        1. Read original corpus directly (skip format conversion to preserve IDs)
         2. Load ANCE model and tokenizer
         3. Encode all documents in batches
         4. Build FAISS index
         5. Save mappings and metadata
         """
-        # Step 1: Prepare corpus
-        corpus_path = self._save_dense_corpus()
+        # Step 1: Use original corpus directly to preserve original document IDs
+        corpus_path = self.corpus_path
+        logging.info(f"📖 Reading original corpus directly from: {corpus_path}")
         
         # Create output directory
         if self.index_dir.exists():
@@ -216,33 +355,68 @@ class ANCEIndexer(BaseIndexer):
         logging.info("🔍 Encoding documents with ANCE...")
         embeddings = []
         doc_ids = []
+        doc_metadata = []  # Store metadata alongside processing
+        
+        batch_texts = []
+        batch_ids = []
+        batch_docs = []
         
         with open(corpus_path, 'r', encoding='utf-8') as f:
-            batch_texts = []
-            batch_ids = []
-            
             for line_idx, line in enumerate(tqdm(f, desc="Processing documents")):
-                doc = json.loads(line.strip())
-                doc_id = doc.get('docid') or doc.get('id', f"doc_{line_idx}")
-                text = doc.get('contents', '') or doc.get('text', '')
+                try:
+                    doc = json.loads(line.strip())
+                except json.JSONDecodeError as e:
+                    logging.warning(f"Failed to parse JSON on line {line_idx}: {e}")
+                    continue
+                
+                # Extract document ID
+                doc_id = self._extract_document_id(doc, line_idx)
+                
+                # Extract text content
+                text = doc.get('contents', '') or doc.get('text', '') or doc.get('content', '')
+                
+                # DEBUG: Log first few documents
+                if line_idx < 10:
+                    logging.info(f"DEBUG: Line {line_idx}: doc_id = '{doc_id}', text_len = {len(text)}, text_preview = '{text[:50]}...'")
+                
+                # Use empty string or single space for empty documents
+                if not text.strip():
+                    text = " "  # Single space for empty documents
                 
                 batch_texts.append(text)
                 batch_ids.append(doc_id)
+                batch_docs.append(doc)
                 
                 # Process batch when full
                 if len(batch_texts) >= self.batch_size:
                     batch_embeddings = self._encode_batch(batch_texts, tokenizer, model)
                     embeddings.extend(batch_embeddings)
                     doc_ids.extend(batch_ids)
+                    doc_metadata.extend(batch_docs)
                     
                     batch_texts = []
                     batch_ids = []
-            
+                    batch_docs = []
             # Process remaining documents
             if batch_texts:
                 batch_embeddings = self._encode_batch(batch_texts, tokenizer, model)
                 embeddings.extend(batch_embeddings)
                 doc_ids.extend(batch_ids)
+                doc_metadata.extend(batch_docs)
+        
+        # DEBUG: Print final counts and first few collected document IDs
+        logging.info("=== FINAL DEBUG INFO ===")
+        logging.info(f"Total documents processed: {len(doc_ids)}")
+        logging.info(f"Total embeddings created: {len(embeddings)}")
+        logging.info(f"Total metadata entries: {len(doc_metadata)}")
+        logging.info("First 5 collected document IDs:")
+        for i, doc_id in enumerate(doc_ids[:5]):
+            logging.info(f"  Index {i}: '{doc_id}'")
+        logging.info("=== END DEBUG INFO ===")
+        
+        # Verify we have documents to index
+        if not doc_ids:
+            raise ValueError("No documents found to index! Check your corpus format.")
         
         # Convert to numpy array
         embeddings = np.array(embeddings)
@@ -271,19 +445,15 @@ class ANCEIndexer(BaseIndexer):
         # Step 5: Save mappings and metadata
         faiss_to_docid, docid_to_faiss = self._create_id_mapping(doc_ids)
         self._save_id_mapping(faiss_to_docid, docid_to_faiss)
-        self._save_corpus_metadata(corpus_path, doc_ids)
+        self._save_corpus_metadata_simple(doc_ids, doc_metadata)
         self._save_model_config()
         
         # Save title map (inherited from base class)
         self._save_title_map()
         
-        # Clean up temporary corpus file
-        if corpus_path.exists():
-            corpus_path.unlink()
-        
         logging.info(f"✅ ANCE indexing complete! Index stored at {self.index_dir}")
         logging.info(f"📁 Index files created:")
-        logging.info(f"  - index.faiss (FAISS index)")
+        logging.info(f"  - index (FAISS index)")
         logging.info(f"  - docid (document IDs)")
         logging.info(f"  - faiss_to_docid.json (ID mapping)")
         logging.info(f"  - docid_to_faiss.json (reverse ID mapping)")
@@ -300,17 +470,23 @@ class ANCEIndexer(BaseIndexer):
         
         # Check for required files
         required_files = [
-            "index.faiss",
+            "index",  # FAISS index file is just "index", not "index.faiss"
             "docid",
             "faiss_to_docid.json",
             "corpus_metadata.json",
             "model_config.json"
         ]
         
+        missing_files = []
         for file_name in required_files:
             file_path = self.index_dir / file_name
             if not file_path.exists():
-                logging.warning(f"Missing index file: {file_path}")
+                missing_files.append(file_name)
+        
+        if missing_files:
+            logging.warning(f"Missing index files: {missing_files}")
+        else:
+            logging.info("✅ All required index files found")
         
         logging.info(f"✅ ANCE index loaded from {self.index_dir}")
         return self.index_dir

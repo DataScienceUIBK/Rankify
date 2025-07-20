@@ -4,8 +4,12 @@ import torch
 from rankify.generator.generator import Generator
 from rankify.dataset.dataset import Dataset
 from rankify.metrics.metrics import Metrics
+from pathlib import Path
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+summary_path = "benchmark_summary.txt"        # one file for the whole script run
+header_written = Path(summary_path).exists()  # keep track of whether we already wrote the header
 
 # Datasets to evaluate
 DATASETS = [
@@ -37,7 +41,7 @@ MODELS = [
 N_DOCS = 5  # Number of docs to retrieve per query
 
 # Number of questions to evaluate per dataset (set to None to use all)
-N_QUESTIONS = 1  # e.g., 1 for one question, 10 for ten, None for all
+N_QUESTIONS = None  # e.g., 1 for one question, 10 for ten, None for all
 
 # Generation parameters for HuggingFace models (pass as kwargs)
 generation_kwargs = dict(
@@ -83,10 +87,35 @@ for model_cfg in MODELS:
             generation_metrics = metrics.calculate_generation_metrics(generated_answers)
             print(f"Generation metrics ({rag_method}): {generation_metrics}")
             results[model_cfg['model_name']][dataset_name][rag_method] = generation_metrics
+            mode = "a"  # always append
+            with open(summary_path, mode, encoding="utf-8") as f:
+                if not header_written:
+                    f.write("Benchmark Results Summary:\n")
+                    header_written = True
 
-        print("=" * 120)
+                f.write(f"\nModel: {model_cfg['model_name']}\n")
+                f.write(f"  Dataset: {dataset_name}\n")
+                for rag_method, metrics_dict in results[model_cfg['model_name']][dataset_name].items():
+                    f.write(f"    {rag_method}: {metrics_dict}\n")
+
+            print(f"Intermediate summary appended to {summary_path}")
+            print("=" * 120)
         # Optionally save intermediate results
         dataset.save_dataset(f"{dataset_name}-bm25-eval.json", save_text=True)
+
+
+# Save summary to file instead of printing
+summary_path = "benchmark_summary_final.txt"
+with open(summary_path, "w", encoding="utf-8") as f:
+    f.write("Benchmark Results Summary:\n")
+    for model_name, model_results in results.items():
+        f.write(f"\nModel: {model_name}\n")
+        for dataset_name, rag_results in model_results.items():
+            f.write(f"  Dataset: {dataset_name}\n")
+            for rag_method, metrics_dict in rag_results.items():
+                f.write(f"    {rag_method}: {metrics_dict}\n")
+
+print(f"\nSummary written to {summary_path}")
 
 # Print summary
 print("\n\nBenchmark Results Summary:")

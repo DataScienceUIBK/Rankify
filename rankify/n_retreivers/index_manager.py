@@ -58,7 +58,7 @@ class IndexManager:
                     "encoder": "castorini/ance-dpr-question-multi"
                 },
                 "msmarco": {
-                    "prebuilt": "msmarco-passage.ance-multi", 
+                    "prebuilt": "msmarco-v1-passage.ance", 
                     "encoder": "castorini/ance-msmarco-passage"
                 }
             },

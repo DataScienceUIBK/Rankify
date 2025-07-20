@@ -99,7 +99,7 @@ def main():
         # NEW ANCE BLOCK
         elif args.retriever == "ance":
             if args.encoder is None:
-                args.encoder = "castorini/ance-msmarco-passage"
+                args.encoder = "castorini/ance-dpr-context-multi"
                 print("No encoder specified. Using default: castorini/ance-msmarco-passage")
 
             indexer = ANCEIndexer(**get_indexer_args(args))

@@ -91,7 +91,7 @@ class WebSearchTool(Tool):
             SearchAPIClient: An instance of the search API client. E.g., SerpAPIClient.
         """
         if search_provider.lower() == 'serper':
-            print(api_key)
+            #print(api_key)
             return SerperApiClient(api_key=api_key)
         else:
             raise ValueError(f'Invalid search provider{search_provider}')

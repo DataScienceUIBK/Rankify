@@ -84,7 +84,7 @@ def filter_quality_content(text: str, min_quality_score: float = 0.2) -> str:
             quality_content.append((cleaned_text, quality_score))
 
     # Debug print
-    print(f"Found {len(quality_content)} quality paragraphs out of {len(paragraphs)} total")
+    #print(f"Found {len(quality_content)} quality paragraphs out of {len(paragraphs)} total")
 
     if quality_content:
         return "\n\n".join(text for text, _ in quality_content)
