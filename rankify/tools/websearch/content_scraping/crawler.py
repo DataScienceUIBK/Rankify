@@ -79,7 +79,7 @@ class WebScraper:
                 content = None
                 fit_markdown = None
                 if results.success:
-                    print(extraction_config.name)
+                    #print(extraction_config.name)
                     if extraction_config.name in ['no_extraction', 'cosine']:
                         if hasattr(results, 'markdown'):
                             content = results.markdown.raw_markdown
@@ -101,8 +101,8 @@ class WebScraper:
                         content = results.extracted_content
                         from rankify.tools.websearch.content_scraping.utils import filter_quality_content
                         content = filter_quality_content(content)
-                print(f"Content extracted: {content[:100]}...")  # Debug print
-                print(f"Fit markdown: {fit_markdown[:100]}...")  # Debug print
+                #print(f"Content extracted: {content[:100]}...")  # Debug print
+                #print(f"Fit markdown: {fit_markdown[:100]}...")  # Debug print
                 extracted_result = ScrapedResult(
                     name=extraction_config.name,
                     success=results.success,
@@ -155,7 +155,7 @@ class WebScraper:
         results = {}
         for url, result in zip(urls, results_list):
             results[url] = result
-            print(f"Scraped {url} with results: {result}")
+            #print(f"Scraped {url} with results: {result}")
         return results
 
 async def main():

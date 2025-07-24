@@ -3,6 +3,7 @@ from rankify.dataset.dataset import Document
 from rankify.generator.models.base_rag_model import BaseRAGModel
 from rankify.generator.rag_methods.base_rag_method import BaseRAGMethod
 
+from tqdm.auto import tqdm 
 
 class ChainOfThoughtRAG(BaseRAGMethod):
     """
@@ -29,7 +30,7 @@ class ChainOfThoughtRAG(BaseRAGMethod):
         """Answer a question using chain-of-thought reasoning."""
         answers = []
 
-        for document in documents:
+        for document in tqdm(documents, desc="Answering questions", unit="q"):
             # Extract question and contexts from the document
             question = document.question.question
             contexts = [context.text for context in document.contexts]
