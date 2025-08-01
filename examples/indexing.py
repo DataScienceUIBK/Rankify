@@ -1,14 +1,16 @@
 # sample indexing code
-from rankify.indexing import LuceneIndexer, DPRIndexer, ColBERTIndexer
+from rankify.indexing import BGEIndexer, LuceneIndexer, DPRIndexer, ColBERTIndexer
 
-
+data_path ="./sample.jsonl"
 def index_bm25():
     """
     Sample code to index a BM25 index using the BM25Indexer class.
     This function initializes the indexer with the corpus path and output directory,
     builds the index, and loads it.
+    #rankify-index index ./sample.jsonl --retriever bm25  --output bm25_index
+
     """
-    indexer = LuceneIndexer(corpus_path="data/wikipedia_100.jsonl", output_dir='rankify_indices',
+    indexer = LuceneIndexer(corpus_path=data_path, output_dir='./rankify_indices',
                             chunk_size=1024, threads=8, index_type="wiki")
 
     indexer.build_index()
@@ -17,7 +19,7 @@ def index_bm25():
     print("BM25 indexing complete.")
 
 def index_dpr_wiki():
-        indexer = LuceneIndexer(corpus_path="data/wikipedia_100.jsonl", output_dir="rankify_indices",
+        indexer = LuceneIndexer(corpus_path=data_path, output_dir="rankify_indices",
                                 chunk_size=1024, threads=8, index_type="wiki", retriever_name="dpr")
         indexer.build_index()
         indexer.load_index()
@@ -25,7 +27,7 @@ def index_dpr_wiki():
 
 def index_dpr_msmarco():
         indexer = DPRIndexer(
-            corpus_path="data/msmarco_100.jsonl",output_dir="rankify_indices",
+            corpus_path=data_path,output_dir="rankify_indices",
             index_type="msmarco",
             encoder_name="facebook/dpr-ctx_encoder-single-nq-base",
             batch_size=32
@@ -43,7 +45,7 @@ def index_contriever_wiki():
     builds the index, and loads it.
     """
     indexer = DPRIndexer(
-        corpus_path="./data/wikipedia_100.jsonl",
+        corpus_path=data_path,
         output_dir="rankify_indices",
         index_type="wiki",
         encoder_name="facebook/contriever",
@@ -62,7 +64,7 @@ def index_contriever_msmarco():
     builds the index, and loads it.
     """
     indexer = DPRIndexer(
-        corpus_path="./data/msmarco_100.jsonl",
+        corpus_path=data_path,
         output_dir="rankify_indices",
         index_type="msmarco",
         encoder_name="facebook/contriever",
@@ -81,7 +83,7 @@ def index_colbert_wiki():
     builds the index, and loads it.
     """
     indexer = ColBERTIndexer(
-        corpus_path="data/wikipedia_100.jsonl",
+        corpus_path=data_path,
         output_dir="rankify_indices",
         index_type="wiki",
         batch_size=32
@@ -98,8 +100,8 @@ def index_bge_wiki():
     This function initializes the indexer with the corpus path and output directory,
     builds the index, and loads it.
     """
-    indexer = ColBERTIndexer(
-        corpus_path="./data/wikipedia_100.jsonl",
+    indexer = BGEIndexer(
+        corpus_path=data_path,
         output_dir="rankify_indices",
         index_type="wiki",
         encoder_name="BAAI/bge-large-en-v1.5",
