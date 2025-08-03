@@ -68,9 +68,9 @@ class LuceneIndexer(BaseIndexer):
         It also handles the cleanup of temporary files and saves a title map for the indexed documents.
         """
         self._create_id_mapping()
-
+        self.output_dir.mkdir(parents=True, exist_ok=True)
         corpus_path = self._save_pyserini_corpus()
-
+        
         temp_corpus_dir = self.output_dir / "temp_corpus"
 
         if temp_corpus_dir.exists():

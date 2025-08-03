@@ -186,6 +186,7 @@ class DenseRetriever(BaseRetriever):
                     print(f"Error processing document ID {hit.docid}: {e}")
             
             document.contexts = contexts
+            #break
         
         return documents
     
