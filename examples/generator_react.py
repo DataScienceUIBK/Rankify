@@ -1,7 +1,7 @@
 import torch
 from rankify.dataset.dataset import Document, Question, Answer, Context
 from rankify.generator.generator import Generator
-from rankify.retrievers.retriever import Retriever
+from rankify.n_retreivers.retriever import Retriever
 
 # Define a question that requires reasoning and possibly external search
 question = Question("Which city hosted the Summer Olympics after Athens in 2004?")
@@ -18,10 +18,16 @@ contexts = [
 ]
 
 # Construct document
-doc = Document(question=question, answers=answers, contexts=contexts)
+docs = [Document(question=question, answers=answers, contexts=contexts)]
+
+retriever = Retriever(method='bm25', n_docs=5, index_type='wiki')
+retrieved_documents = retriever.retrieve(docs)
+for i, doc in enumerate(retrieved_documents):
+     print(f"\nDocument {i+1}:")
+     print(doc)
 
 # Initialize retriever (example: BM25, can be any retriever compatible with your pipeline)
-retriever = Retriever(method="bm25", n_docs=3, index_type="wiki")
+#retriever = Retriever(method="bm25", n_docs=3, index_type="wiki")
 # Initialize Generator for ReAct RAG
 generator = Generator(
     method="react-rag",
