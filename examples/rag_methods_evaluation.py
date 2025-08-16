@@ -6,6 +6,8 @@ from rankify.dataset.dataset import Dataset
 from rankify.metrics.metrics import Metrics
 from pathlib import Path
 
+from rankify.n_retreivers.retriever import Retriever
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 summary_path = "benchmark_summary.txt"        # one file for the whole script run
@@ -26,7 +28,8 @@ RAG_METHODS = [
     "fid",
     "in-context-ralm",
     "zero-shot",
-    "self-consistency-rag"
+    "self-consistency-rag",
+    "react-rag"
 ]
 
 # Models to evaluate (extend this list as needed, all use same config for now)
@@ -88,6 +91,13 @@ for model_cfg in MODELS:
                 except Exception as e:
                     print(f"Error with method {rag_method} on dataset {dataset_name}: {e}")
                     generated_answers = [""] * len(documents)
+            elif rag_method== "react-rag":
+                retriever = Retriever(method="bm25", n_docs=N_DOCS, index_type="wiki")
+                generator = Generator(
+                    method="react-rag",
+                    retriever=retriever,
+                    **model_cfg
+                )
             else:
                 generator = Generator(
                     method=rag_method,
