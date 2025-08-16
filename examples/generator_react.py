@@ -3,21 +3,16 @@ from rankify.dataset.dataset import Document, Question, Answer, Context
 from rankify.generator.generator import Generator
 from rankify.n_retreivers.retriever import Retriever
 
-# Define a question that requires reasoning and possibly external search
-question = Question("Which city hosted the Summer Olympics after Athens in 2004?")
+
+question = Question("Who won the FIFA World Cup after Germany in 2014?")
 answers = Answer("")
 
-# Initial contexts do not contain the answer directly
 contexts = [
-    Context(id=1, title="Athens Olympics", text=(
-        "The 2004 Summer Olympics were held in Athens, Greece."), score=0.9),
-    Context(id=2, title="Olympic History", text=(
-        "The Summer Olympics are held every four years in different cities around the world."), score=0.8),
-    Context(id=3, title="Olympic Host Cities", text=(
-        "Cities compete to host the Olympic Games, which are awarded by the International Olympic Committee."), score=0.7),
+    Context(id=1, title="2014 FIFA World Cup", text="Germany won the FIFA World Cup in 2014, held in Brazil.", score=0.9),
+    Context(id=2, title="FIFA World Cup History", text="The FIFA World Cup is held every four years, with different countries winning each time.", score=0.8),
+    Context(id=3, title="World Cup Winners", text="The winners of the FIFA World Cup are celebrated globally.", score=0.7),
 ]
 
-# Construct document
 docs = [Document(question=question, answers=answers, contexts=contexts)]
 
 retriever = Retriever(method='bm25', n_docs=5, index_type='wiki')
