@@ -40,6 +40,13 @@ class HuggingFaceModel(BaseRAGModel):
 
         outputs = self.model.generate(**inputs, **kwargs)
 
+        def stop_at_first_period(text):
+           idx = text.find(".")
+           if idx != -1:
+               return text[:idx+1].strip()
+           return text.strip()
+
+
     # If multiple sequences requested, decode all
         if kwargs.get("num_return_sequences", 1) > 1:
             answers = []
@@ -47,10 +54,12 @@ class HuggingFaceModel(BaseRAGModel):
                 generated_text = self.tokenizer.decode(output, skip_special_tokens=True)
                 answer = generated_text[len(prompt):].strip()
                 answer = answer.split("\n")[0].strip()
+                answer = stop_at_first_period(answer)
                 answers.append(answer)
             return answers
         else:
             generated_text = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
             answer = generated_text[len(prompt):].strip()
             answer = answer.split("\n")[0].strip()
+            answer = stop_at_first_period(answer)
             return answer

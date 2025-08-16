@@ -50,6 +50,7 @@ DEFAULT_PROMPTS = {
         "- If no action is required or you are sure of the answer, proceed to the Final Answer.\n"
         "- Do not hallucinate Observations; they are always provided externally.\n"
         "- End with \"Final Answer:\" when the task is solved.\n\n"
+        "- The final Answer should be as precise and concise as possible.\n"
         "Question: {question}\n"
         "Contexts:\n{contexts}\n"
         "Thought:"
