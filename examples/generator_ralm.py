@@ -13,7 +13,7 @@ contexts = [
 doc = Document(question=question, answers= answers, contexts=contexts)
 
 # Initialize Generator (e.g., Meta Llama, with huggingface backend)
-generator = Generator(method="in-context-ralm", model_name='meta-llama/Meta-Llama-3.1-8B-Instruct', backend="huggingface")
+generator = Generator(method="in-context-ralm", model_name='meta-llama/Meta-Llama-3.1-8B', backend="huggingface")
 
 # Generate answer
 generated_answers = generator.generate([doc])

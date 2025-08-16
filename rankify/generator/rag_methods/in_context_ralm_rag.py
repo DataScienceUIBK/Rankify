@@ -116,7 +116,7 @@ class InContextRALMRAG(BaseRAGMethod):
             return f"Answer these questions:\nQ: {question}\nA:"
         
         docs_text = "\n\n".join([f"{ctx['title']}\n\n{ctx['text']}" for ctx in example["ctxs"][:self.num_docs]])
-        return f"{docs_text}\n\nBased on these texts, answer these questions:\nQ: {question}\nA:"
+        return f"{docs_text}\n\nBased on these texts, answer these questions in the shortest, most precise way possible. I need a factual answer since I want to compare your answer.:\nQ: {question}\nA:"
 
     def _prepare_dataloader(self, documents: list[Document]):
         """
@@ -183,6 +183,12 @@ class InContextRALMRAG(BaseRAGMethod):
             answer = generation_str[len(prompt):].split("\n")[0]
 
             results.append(answer)
+
+            print(f"prompt: {prompt}")
+            print("Model class:", type(self.model))
+            print("Tokenizer class:", type(self.tokenizer))
+            print("Tokenizer special tokens:", self.tokenizer.special_tokens_map)
+            print("Model config:", self.model.config)
 
         return results
 

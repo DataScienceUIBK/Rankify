@@ -24,7 +24,7 @@ class SelfConsistencyRAG(BaseRAGMethod):
             # Generate multiple answers in one call
             sample_answers = self.model.generate(
                 prompt=prompt,
-                do_sample=True,
+                #do_sample=True,
                 num_return_sequences=self.num_samples,
                 **kwargs
             )
@@ -49,7 +49,7 @@ class SelfConsistencyRAG(BaseRAGMethod):
             else:
                 # Majority vote (with normalization)
                 def normalize(text):
-                    return text.lower().strip()
+                    return text.strip()
                 normalized = [normalize(ans) for ans in sample_answers]
                 most_common, _ = Counter(normalized).most_common(1)[0]
                 answers.append(most_common)

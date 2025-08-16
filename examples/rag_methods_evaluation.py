@@ -6,6 +6,8 @@ from rankify.dataset.dataset import Dataset
 from rankify.metrics.metrics import Metrics
 from pathlib import Path
 
+from rankify.n_retreivers.retriever import Retriever
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 summary_path = "benchmark_summary.txt"        # one file for the whole script run
@@ -26,7 +28,8 @@ RAG_METHODS = [
     "fid",
     "in-context-ralm",
     "zero-shot",
-    "self-consistency-rag"
+    "self-consistency-rag",
+    "react-rag"
 ]
 
 # Models to evaluate (extend this list as needed, all use same config for now)
@@ -34,9 +37,14 @@ MODELS = [
     {
         "model_name": 'meta-llama/Meta-Llama-3.1-8B-Instruct',
         "backend": "huggingface",
+        "torch_dtype": torch.float16,
+        "stop_at_period": True,
     },
     # Add more model configs as dicts here
 ]
+
+FID_MODEL_NAME = "nq_reader_base"
+FID_BACKEND = "fid"
 
 N_DOCS = 5  # Number of docs to retrieve per query
 
@@ -70,18 +78,45 @@ for model_cfg in MODELS:
         for rag_method in RAG_METHODS:
             print("-" * 80)
             print(f"Testing RAG method: {rag_method}")
-            generator = Generator(
-                method=rag_method,
-                **model_cfg  # Pass all model parameters as kwargs
-            )
-            try:
-                generated_answers = generator.generate(
-                    documents=documents,
-                    **generation_kwargs
+
+            # Special handling for FiD
+            if rag_method == "fid":
+                generator = Generator(
+                    method="fid",
+                    model_name=FID_MODEL_NAME,
+                    backend=FID_BACKEND
                 )
-            except Exception as e:
-                print(f"Error with method {rag_method} on dataset {dataset_name}: {e}")
-                generated_answers = [""] * len(documents)
+                # FiD models typically do not use HuggingFace generation kwargs
+                try:
+                    generated_answers = generator.generate(documents)
+                except Exception as e:
+                    print(f"Error with method {rag_method} on dataset {dataset_name}: {e}")
+                    generated_answers = [""] * len(documents)
+            elif rag_method== "react-rag":
+                retriever = Retriever(method="bm25", n_docs=N_DOCS, index_type="wiki")
+                generator = Generator(
+                    method="react-rag",
+                    retriever=retriever,
+                    **model_cfg
+                )
+                try:
+                    generated_answers = generator.generate(documents)
+                except Exception as e:
+                    print(f"Error with method {rag_method} on dataset {dataset_name}: {e}")
+                    generated_answers = [""] * len(documents)
+            else:
+                generator = Generator(
+                    method=rag_method,
+                    **model_cfg  # Pass all model parameters as kwargs
+                )
+                try:
+                    generated_answers = generator.generate(
+                        documents=documents,
+                        #**generation_kwargs
+                    )
+                except Exception as e:
+                    print(f"Error with method {rag_method} on dataset {dataset_name}: {e}")
+                    generated_answers = [""] * len(documents)
 
             print(f"Generated answers ({rag_method}): {generated_answers}")
             generation_metrics = metrics.calculate_generation_metrics(generated_answers)
