@@ -37,7 +37,8 @@ MODELS = [
     {
         "model_name": 'meta-llama/Meta-Llama-3.1-8B-Instruct',
         "backend": "huggingface",
-        "torch_dtype": torch.float16
+        "torch_dtype": torch.float16,
+        "stop_at_period": True,
     },
     # Add more model configs as dicts here
 ]
@@ -98,6 +99,11 @@ for model_cfg in MODELS:
                     retriever=retriever,
                     **model_cfg
                 )
+                try:
+                    generated_answers = generator.generate(documents)
+                except Exception as e:
+                    print(f"Error with method {rag_method} on dataset {dataset_name}: {e}")
+                    generated_answers = [""] * len(documents)
             else:
                 generator = Generator(
                     method=rag_method,
@@ -106,7 +112,7 @@ for model_cfg in MODELS:
                 try:
                     generated_answers = generator.generate(
                         documents=documents,
-                        **generation_kwargs
+                        #**generation_kwargs
                     )
                 except Exception as e:
                     print(f"Error with method {rag_method} on dataset {dataset_name}: {e}")
