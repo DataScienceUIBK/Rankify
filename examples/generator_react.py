@@ -74,7 +74,8 @@ generator = Generator(
     model_name='meta-llama/Meta-Llama-3.1-8B-Instruct',
     backend="huggingface",
     torch_dtype=torch.float16,
-    retriever=retriever
+    retriever=retriever,
+    stop_at_period=True
 )
 
 
