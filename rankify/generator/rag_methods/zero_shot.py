@@ -16,14 +16,7 @@ class ZeroShotRAG(BaseRAGMethod):
         model (BaseRAGModel): The underlying model used for text generation.
     """
     def __init__(self, model: BaseRAGModel, **kwargs):
-        """
-        Initialize the ZeroShotRAG method.
-
-        Args:
-            model (BaseRAGModel): A model instance for text generation.
-            kwargs: Additional arguments for customization.
-        """
-        self.model = model
+        super().__init__(model=model)
 
     def answer_questions(self, documents: List[Document], custom_prompt=None, **kwargs) -> List[str]:
         """

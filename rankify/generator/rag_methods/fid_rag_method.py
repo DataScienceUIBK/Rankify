@@ -28,8 +28,8 @@ class FiDRAGMethod(BaseRAGMethod):
         - The FiD model combines multiple passages to generate better responses.
     
     """
-    def __init__(self, model: BaseRAGModel):
-        self.model = model
+    def __init__(self, model: BaseRAGModel, **kwargs):
+        super().__init__(model=model)
 
     def answer_questions(self, documents: List[Document], custom_prompt=None, **kwargs) -> List[str]:
         """

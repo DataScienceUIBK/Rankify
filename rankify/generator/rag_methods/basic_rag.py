@@ -8,7 +8,7 @@ from tqdm.auto import tqdm
 
 class BasicRAG(BaseRAGMethod):
     def __init__(self, model: BaseRAGModel, **kwargs):
-        self.model = model
+        super().__init__(model=model)
 
     def answer_questions(self, documents: List[Document], custom_prompt=None, **kwargs) -> List[str]:
         """

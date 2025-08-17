@@ -6,7 +6,7 @@ import re
 
 class ReActRAG(BaseRAGMethod):
     def __init__(self, model: BaseRAGModel, retriever, max_steps: int = 20, max_contexts_per_search: int = 3, use_internal_knowledge: bool = True, **kwargs):
-        self.model = model
+        super().__init__(model=model)
         self.retriever = retriever  # Pass a retriever instance
         self.max_steps = max_steps
         self.max_contexts_per_search = max_contexts_per_search
