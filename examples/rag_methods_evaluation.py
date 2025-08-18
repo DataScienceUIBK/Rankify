@@ -18,7 +18,8 @@ DATASETS = [
     "web_questions-test",
     "nq-test",
     "triviaqa-test",
-    "strategyqa-test"
+    "strategyqa-test",
+    "hotpotqa-test"
 ]
 
 # RAG methods to evaluate
@@ -49,7 +50,7 @@ FID_BACKEND = "fid"
 N_DOCS = 5  # Number of docs to retrieve per query
 
 # Number of questions to evaluate per dataset (set to None to use all)
-N_QUESTIONS = None  # e.g., 1 for one question, 10 for ten, None for all
+N_QUESTIONS = 1  # e.g., 1 for one question, 10 for ten, None for all
 
 # Generation parameters for HuggingFace models (pass as kwargs)
 generation_kwargs = dict(
