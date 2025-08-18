@@ -184,11 +184,5 @@ class InContextRALMRAG(BaseRAGMethod):
 
             results.append(answer)
 
-            print(f"prompt: {prompt}")
-            print("Model class:", type(self.model))
-            print("Tokenizer class:", type(self.tokenizer))
-            print("Tokenizer special tokens:", self.tokenizer.special_tokens_map)
-            print("Model config:", self.model.config)
-
         return results
 

@@ -7,7 +7,7 @@ from tqdm.auto import tqdm
 
 class SelfConsistencyRAG(BaseRAGMethod):
     def __init__(self, model: BaseRAGModel, num_samples: int = 5, reranker=None, **kwargs):
-        self.model = model
+        super().__init__(model=model)
         self.num_samples = num_samples
         self.reranker = reranker  # Optional: pass a reranker instance
 

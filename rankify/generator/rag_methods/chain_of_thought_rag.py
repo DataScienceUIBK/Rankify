@@ -24,7 +24,7 @@ class ChainOfThoughtRAG(BaseRAGMethod):
         - The model can use the provided contexts or rely on its own knowledge to generate answers.
     """
     def __init__(self, model: BaseRAGModel, **kwargs):
-        self.model = model
+        super().__init__(model=model)
 
     def answer_questions(self, documents: List[Document], custom_prompt=None, **kwargs) -> List[str]:
         """Answer a question using chain-of-thought reasoning."""

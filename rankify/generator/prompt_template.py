@@ -10,20 +10,24 @@ class PromptTemplate(Enum):
 
 DEFAULT_PROMPTS = {
     PromptTemplate.BASIC_RAG: (
-        "You are a helpful assistant. Give a single, concise answer to the question.\n"
+        "You are a helpful assistant. Give a single, concise answer to the question using the provided contexts.\n"
+        "If the provided contexts are not sufficient, you may also use your own knowledge"
         #"Since I want to use this for evaluation, only the single answer helps me a lot more and there is no point in explaining it.\n"
         "Question: {question}\n"
         "Contexts:\n{contexts}\n"
         "Answer:"
     ),
     PromptTemplate.CHAIN_OF_THOUGHT_RAG: (
-        "You are a helpful assistant. Think step by step and then answer concisely with only the answer.\n"
+        "You are a helpful assistant. Think step by step and then answer concisely with only the answer as a fact.\n"
+        "Use the provided contexts if possible; if they are insuffiecient, you may use your own knowledge."
         "Question: {question}\n"
         "Contexts:\n{contexts}\n"
-        "Let's think step by step.\nAnswer:"
+        "Let's think step by step.\n"
+        "Answer:"
     ),
     PromptTemplate.SELF_CONSISTENCY_RAG: (
         "You are a helpful assistant. Think step by step and then answer concisely with only the answer as a fact.\n"
+        "Use the provided contexts if possible; if they are insuffiecient, you may use your own knowledge."
         "Question: {question}\n"
         "Contexts:\n{contexts}\n"
         "Let's think step by step.\n"
