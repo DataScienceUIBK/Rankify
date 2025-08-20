@@ -11,7 +11,6 @@ class LitellmModel(BaseRAGModel):
 
     Attributes:
         model_name (str): Name of the LiteLLM model.
-        api_keys (list): List of API keys for authenticating with LiteLLM.
         prompt_generator (PromptGenerator): Instance for generating prompts.
         client (LitellmClient): Client for interacting with the LiteLLM API.
 
@@ -24,7 +23,7 @@ class LitellmModel(BaseRAGModel):
         Initialize the LitellmModel with the LitellmClient.
 
         :param model_name: Name of the LiteLLM model.
-        :param api_keys: List of API keys for LiteLLM.
+        :param api_key: API key for LiteLLM.
         :param prompt_generator: Instance of PromptGenerator for generating prompts.
         """
         self.model_name = model_name
@@ -36,12 +35,25 @@ class LitellmModel(BaseRAGModel):
         """
         Generate a response using LiteLLM's API.
 
-        :param prompt: The input prompt for the model.
-        :param kwargs: Additional parameters for the LiteLLM API call.
-        :return: The generated response as a string.
+        Args:
+            prompt (str): The input prompt for the model.
+            **kwargs: Additional parameters for the LiteLLM API call, such as:
+                - model (str): Model name to use (default: self.model_name).
+                - max_tokens (int): Maximum number of tokens to generate (default: 128).
+                - temperature (float): Sampling temperature (default: 0.7).
+    
+        Returns:
+            str: The generated response as a string.
+    
+        Notes:
+            - Default parameters: model=self.model_name, max_tokens=128, temperature=0.7.
+            - All generation parameters can be overridden via `kwargs`.
+    
+        Example:
+            ```python
+            answer = model.generate("What is the capital of France?", max_tokens=64, temperature=0.5)
+            ```
         """
-        # Todo: use this later -> Generate the prompt using the prompt generator
-        # full_prompt = self.prompt_generator.generate_prompt(prompt)
 
         # Set default parameters for the LiteLLM API call
         kwargs.setdefault("model", self.model_name)

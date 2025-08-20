@@ -3,7 +3,6 @@ import torch
 from torch.utils.data import DataLoader, SequentialSampler
 from rankify.generator.models.base_rag_model import BaseRAGModel
 from rankify.utils.generator.FiD.data import Dataset, Collator
-#from rankify.utils.generator.FiD.util import load_t5_tokenizer
 from  rankify.utils.generator.FiD.model import FiDT5
 from rankify.utils.generator.download import ModelDownloader
 from rankify.dataset.dataset import Document
@@ -17,6 +16,8 @@ class FiDModel(BaseRAGModel):
 
     **Fusion-in-Decoder (FiD)** is a **retrieval-augmented generation (RAG) model** that 
     aggregates information from **multiple retrieved passages** to generate context-aware answers.
+    Inside Rankifys architecture, this model is an exception, it subclasses `BaseRAGModel` but also includes the logic
+    of the FiD RAG method, since this RAG technique relies on the full transformer architecture.
 
     Attributes:
         device (str): Device used for inference (`'cuda'` or `'cpu'`).
@@ -30,27 +31,31 @@ class FiDModel(BaseRAGModel):
           [Paper](https://arxiv.org/abs/2007.01282)
 
     See Also:
-        - `BaseGenerator`: Parent class for FiDGenerator.
+        - `BaseRAGModel`: Parent class for FiDModel.
         - `RAG-based QA Models`: FiD falls under retrieval-augmented generation.
 
     Example:
         ```python
-        from rankify.generator.generator import Generator
         from rankify.dataset.dataset import Document, Question, Answer, Context
+        from rankify.generator.generator import Generator
 
-        generator = Generator(method="fid", model_name="nq_reader_base")
-        documents = [
-            Document(
-                question=Question("Who discovered gravity?"),
-                answers=Answer(["Isaac Newton"]),
-                contexts=[
-                    Context(title="Gravity", text="Isaac Newton formulated the laws of gravity.", score=1.0)
-                ]
-            )
+        # Define question and answer
+        question = Question("What is the capital of France?")
+        answers = Answer([""])
+        contexts = [
+            Context(id=1, title="France", text="The capital of France is Paris.", score=0.9),
+            Context(id=2, title="Germany", text="Berlin is the capital of Germany.", score=0.5)
         ]
 
-        generated_answers = generator.generate(documents)
-        print(generated_answers[0])  # 'Isaac Newton discovered gravity in the late 17th century.'
+        # Construct document
+        doc = Document(question=question, answers=answers, contexts=contexts)
+
+        # Initialize Generator (e.g., Meta Llama)
+        generator = Generator(method="fid", model_name='nq_reader_base', backend="fid")
+
+        # Generate answer
+        generated_answers = generator.generate([doc])
+        print(generated_answers)  # Output: ["Paris"]
         ```
 
     Notes:
@@ -71,19 +76,22 @@ class FiDModel(BaseRAGModel):
 
     def __init__(self, method: str = "fid", model_name: str = "nq_reader_base", **kwargs):
         """
-        Initializes the FiD Generator.
+        Initializes the FiDModel for retrieval-augmented generation.
 
         Args:
-            method (str): The generator type (`"fid"`).
+            method (str): The generator type (default: `"fid"`).
             model_name (str): The specific FiD model to use (e.g., `"nq_reader_base"`).
+            max_length (int): Maximum length of generated answers (default: 50).
+            device (str, optional): Device for inference (`'cuda'` or `'cpu'`). If None, auto-detect.
             **kwargs: Additional parameters for model configuration.
-
+    
+        Sets up device, downloads and loads the model and tokenizer, and configures generation parameters.
+    
         Example:
             ```python
-            generator = FiDGenerator(method="fid", model_name="nq_reader_base")
+            generator = FiDModel(method="fid", model_name="nq_reader_base", max_length=64, device="cuda")
             ```
         """
-        #super().__init__(method, model_name)
         self.method = method
         self.model_name = model_name
         self.device = "cuda" if torch.cuda.is_available() else "cpu"

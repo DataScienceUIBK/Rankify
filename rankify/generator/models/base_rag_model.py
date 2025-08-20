@@ -5,7 +5,7 @@ class BaseRAGModel(ABC):
     """
     **Base RAG Model** for Retrieval-Augmented Generation (RAG).
 
-    This is an abstract base class for implementing RAG models. 
+    This is an abstract base class for implementing LLM endpoints in rankify. 
     It defines the interface for generating responses and optional embedding generation.
 
     Methods:
@@ -17,6 +17,7 @@ class BaseRAGModel(ABC):
     Notes:
         - This class serves as a blueprint for RAG models like `OpenAIModel` and `HuggingFaceModel`.
         - The `embed` method is optional and can be implemented if needed.
+        - This class needs to be extended to include new LLM endpoints in Rankify.
     """
     
     @abstractmethod
