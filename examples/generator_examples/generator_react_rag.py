@@ -60,14 +60,13 @@ contexts = [
 
 docs = [Document(question=question, answers=answers, contexts=contexts)]
 
+# Initialize retriever (example: BM25, can be any retriever compatible with your pipeline)
 retriever = Retriever(method='bm25', n_docs=5, index_type='wiki')
 retrieved_documents = retriever.retrieve(docs)
 for i, doc in enumerate(retrieved_documents):
      print(f"\nDocument {i+1}:")
      print(doc)
 
-# Initialize retriever (example: BM25, can be any retriever compatible with your pipeline)
-#retriever = Retriever(method="bm25", n_docs=3, index_type="wiki")
 # Initialize Generator for ReAct RAG
 generator = Generator(
     method="react-rag",
@@ -78,7 +77,6 @@ generator = Generator(
     stop_at_period=True
 )
 
-
 # Generate answer
 generated_answers = generator.generate(test_docs)
-print(generated_answers)  # Expected output: ["Beijing"] (the city that hosted after Athens)
+print(generated_answers)  # Expected output: ["France"]

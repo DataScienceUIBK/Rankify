@@ -29,9 +29,9 @@ generation_kwargs = dict(
     temperature=0.8,      # or even 1.0 for more diversity
     top_p=0.95,           # allow some randomness
     max_new_tokens=16,    # enough for a short answer
-    #num_return_sequences=7,  # match your num_samples
 )
 
+#Use a reranker if preferred over majority voting (optional)
 #reranker = SentenceTransformerReranker(method="sentence_transformer_reranker", model_name="all-MiniLM-L6-v2")
 
 generator = Generator(
@@ -41,8 +41,7 @@ generator = Generator(
     torch_dtype=torch.float16,
     num_samples=10,  # Number of samples for self-consistency
     #reranker=reranker,  # Optional reranker for better answer selection
-    #**generation_kwargs  # Pass generation parameters
 )
 
-generated_answers = generator.generate([doc], **generation_kwargs) #**generation_kwargs)
+generated_answers = generator.generate([doc], **generation_kwargs)
 print(generated_answers) 

@@ -20,6 +20,30 @@ class BasicRAG(BaseRAGMethod):
         - **Lewis et al. **Retrieval-augmented generation for knowledge-intensive nlp tasks**  
           [Paper](https://proceedings.neurips.cc/paper/2020/hash/6b493230205f780e1bc26945df7481e5-Abstract.html)
     
+    Example:
+        ```python
+        from rankify.dataset.dataset import Document, Question, Answer, Context
+        from rankify.generator.generator import Generator
+
+        # Sample question and contexts
+        question = Question("What is the capital of France?")
+        answers=Answer('')
+        contexts = [
+            Context(id=1, title="France", text="The capital of France is Paris.", score=0.9),
+            Context(id=2, title="Germany", text="Berlin is the capital of Germany.", score=0.5)
+        ]
+
+        # Create a Document
+        doc = Document(question=question, answers= answers, contexts=contexts)
+
+        # Initialize Generator (e.g., Meta Llama, with huggingface backend)
+        generator = Generator(method="basic-rag", model_name='meta-llama/Meta-Llama-3.1-8B-Instruct', backend="huggingface")
+
+        # Generate answer
+        generated_answers = generator.generate([doc])
+        print(generated_answers)  # Output: ["Paris"]
+        ```
+    
     Notes:
         - This method does not apply advanced reasoning or fusion techniques.
         - Suitable as a baseline for comparison with more sophisticated RAG methods.
