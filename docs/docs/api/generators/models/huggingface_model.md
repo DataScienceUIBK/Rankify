@@ -1,4 +1,4 @@
-# HuggingFace Model
+# Hugging Face Model
 
 ::: rankify.generator.models.huggingface_model
     handler: python

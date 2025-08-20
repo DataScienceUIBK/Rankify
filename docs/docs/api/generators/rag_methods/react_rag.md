@@ -1,6 +1,6 @@
-# FiD RAG
+# ReAct RAG
 
-::: rankify.generator..rag_methods.fid_rag_method
+::: rankify.generator.rag_methods.react_rag
     handler: python
     options:
         show_source: true

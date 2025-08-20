@@ -2,6 +2,25 @@ from typing import List, Optional
 from enum import Enum
 
 class PromptTemplate(Enum):
+    """
+    **PromptTemplate Enum** for RAG Prompt Strategies.
+
+    Enumerates the supported prompt templates for different RAG methods in Rankify.
+    Each value corresponds to a specific prompt formatting strategy, used by the PromptGenerator to construct prompts for the model.
+
+    Members:
+        BASIC_RAG: Standard prompt for naive RAG (context + question + answer).
+        CHAIN_OF_THOUGHT_RAG: Prompt for chain-of-thought reasoning (step-by-step thinking).
+        ZERO_SHOT: Prompt for zero-shot generation (question only, no context).
+        SELF_CONSISTENCY_RAG: Prompt for self-consistency reasoning (multiple step-by-step answers).
+        REACT_RAG: Prompt for ReAct reasoning and action (interleaved reasoning and retrieval actions).
+
+    Notes:
+        - Used by PromptGenerator to select and format prompts for each RAG method.
+        - Ensures consistent prompt structure across different techniques and models.
+        - The corresponding template strings are defined in DEFAULT_PROMPTS.
+    """
+
     BASIC_RAG = "basic-rag"
     CHAIN_OF_THOUGHT_RAG = "chain-of-thought-rag"
     ZERO_SHOT = "zero-shot"
@@ -12,7 +31,6 @@ DEFAULT_PROMPTS = {
     PromptTemplate.BASIC_RAG: (
         "You are a helpful assistant. Give a single, concise answer to the question using the provided contexts.\n"
         "If the provided contexts are not sufficient, you may also use your own knowledge"
-        #"Since I want to use this for evaluation, only the single answer helps me a lot more and there is no point in explaining it.\n"
         "Question: {question}\n"
         "Contexts:\n{contexts}\n"
         "Answer:"

@@ -1,6 +1,6 @@
-# FiD RAG
+# Prompt Template
 
-::: rankify.generator..rag_methods.fid_rag_method
+::: rankify.generator.prompt_template
     handler: python
     options:
         show_source: true

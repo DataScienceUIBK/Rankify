@@ -24,8 +24,37 @@ class FiDRAGMethod(BaseRAGMethod):
         answer_questions(documents: List[Document], **kwargs) -> List[str]:
             Generates answers for a list of documents using the FiD model.
 
+    See Also:
+        - `FiDModel`: Class for FiDModel, containing the FiD specific logic.
+
+    Example:
+        ```python
+        from rankify.dataset.dataset import Document, Question, Answer, Context
+        from rankify.generator.generator import Generator
+
+        # Define question and answer
+        question = Question("What is the capital of France?")
+        answers = Answer([""])
+        contexts = [
+            Context(id=1, title="France", text="The capital of France is Paris.", score=0.9),
+            Context(id=2, title="Germany", text="Berlin is the capital of Germany.", score=0.5)
+        ]
+
+        # Construct document
+        doc = Document(question=question, answers=answers, contexts=contexts)
+
+        # Initialize Generator (e.g., Meta Llama)
+        generator = Generator(method="fid", model_name='nq_reader_base', backend="fid")
+
+        # Generate answer
+        generated_answers = generator.generate([doc])
+        print(generated_answers)  # Output: ["Paris"]
+        ```
+    
     Notes:
-        - The FiD model combines multiple passages to generate better responses.
+        - This class was created to keep the unified interface of RAG methods.
+        - Since FiD is a specific RAG technique that relies on the full transformer architecture,
+          the logic is included in the model, see 
     
     """
     def __init__(self, model: BaseRAGModel, **kwargs):
@@ -33,7 +62,7 @@ class FiDRAGMethod(BaseRAGMethod):
 
     def answer_questions(self, documents: List[Document], custom_prompt=None, **kwargs) -> List[str]:
         """
-        Answer questions for a list of documents using the model.
+        Answer questions for a list of documents using the FiDModel.
 
         Args:
             documents (List[Document]): A list of Document objects containing questions and contexts.

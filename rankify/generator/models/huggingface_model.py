@@ -13,6 +13,7 @@ class HuggingFaceModel(BaseRAGModel):
         tokenizer: Tokenizer instance for encoding input text.
         model: Pretrained Hugging Face model for text generation.
         prompt_generator (PromptGenerator): Instance for generating prompts.
+        stop_at_period (bool): If True, cuts generated answer at the first period.
 
     Notes:
         - This model uses Hugging Face's Transformers library for text generation.
@@ -27,14 +28,32 @@ class HuggingFaceModel(BaseRAGModel):
         self.stop_at_period = stop_at_period
 
     def generate(self, prompt: str, **kwargs):
-        """Generate a response using Hugging Face's model and return only the answer(s).
+        """
+        Generates a response using the Hugging Face model and returns the answer(s).
 
         Args:
-            prompt (str): The input prompt.
-            **kwargs: Generation parameters.
+            prompt (str): The input prompt for generation.
+            **kwargs: Optional generation parameters, such as:
+                - max_new_tokens (int): Maximum number of new tokens to generate (default: 64).
+                - do_sample (bool): Whether to use sampling (default: True).
+                - num_return_sequences (int): Number of answers to generate (default: 1).
+                - eos_token_id (int): End-of-sequence token ID (default: tokenizer.eos_token_id).
+                - pad_token_id (int): Padding token ID (default: tokenizer.eos_token_id).
+                - temperature (float): Sampling temperature (default: 0.1).
+                - top_p (float): Nucleus sampling parameter (default: 1.0).
 
         Returns:
-            str or List[str]: The generated answer(s).
+            str or List[str]: The generated answer(s). If `num_return_sequences` > 1, returns a list of answers.
+
+        Notes:
+            - The answer is post-processed to remove the prompt and extra whitespace.
+            - If `stop_at_period` is True, the answer is truncated at the first period.
+            - All generation parameters can be overridden via `kwargs`.
+
+        Example:
+            ```python
+            answer = model.generate("What is the capital of France?", max_new_tokens=32)
+            ```
         """
         inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
 
@@ -45,8 +64,7 @@ class HuggingFaceModel(BaseRAGModel):
         kwargs.setdefault("pad_token_id", self.tokenizer.eos_token_id)
         kwargs.setdefault("temperature", 0.1)
         kwargs.setdefault("top_p", 1.0)
-        #print(f"Generating with prompt: {prompt}")
-
+        
         outputs = self.model.generate(**inputs, **kwargs)
 
         def clean_answer(text):

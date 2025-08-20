@@ -17,45 +17,55 @@ class InContextRALMRAG(BaseRAGMethod):
     It **integrates retrieved passages** into the input prompt for **few-shot learning**, improving response quality.
 
     Attributes:
+        model (BaseRAGModel): The underlying RAG model used for generation.
+        tokenizer: Tokenizer associated with the model.
         device (str): Device used for inference (`'cuda'` or `'cpu'`).
-        model_name (str): Name of the pre-trained RALM model.
-        cache_dir (str): Directory to store downloaded models.
-        num_docs (int): Number of retrieved contexts to include in the prompt (default: `1`).
+        cache_dir (str): Directory to store downloaded models and cache files.
+        num_docs (int): Number of retrieved contexts to include in the prompt (default: 1).
         max_length (int): Maximum number of tokens the model can process.
         max_tokens_to_generate (int): Maximum number of tokens the model generates in response.
+
+    Methods:
+        _build_qa_prompt(example): Constructs a QA prompt with retrieved passages for in-context learning.
+        _prepare_dataloader(documents): Converts Document objects into a dataset formatted for RALM.
+        answer_questions(documents, custom_prompt=None): Generates answers for a list of documents using RALM.
 
     References:
         - **Ram et al.** *In-Context Retrieval-Augmented Language Models*  
           [Paper](https://arxiv.org/abs/2302.00083)
 
     See Also:
-        - `BaseGenerator`: Parent class for InContextRALMGenerator.
-        - `Few-Shot Learning`: This model **leverages retrieved passages** for in-context QA.
+        - `BaseRAGMethod`: Parent class for RAG techniques.
+        - Few-Shot Learning: This method leverages retrieved passages for in-context QA.
 
     Example:
         ```python
-        from rankify.generator.generator import Generator
         from rankify.dataset.dataset import Document, Question, Answer, Context
+        from rankify.generator.generator import Generator
 
-        generator = Generator(method="in-context-ralm", model_name="meta-llama/Llama-3.1-8B")
-        documents = [
-            Document(
-                question=Question("Who discovered gravity?"),
-                answers=Answer(["Isaac Newton"]),
-                contexts=[
-                    Context(title="Gravity", text="Isaac Newton formulated the laws of gravity.", score=1.0)
-                ]
-            )
+        # Sample question and contexts
+        question = Question("What is the capital of France?")
+        answers=Answer('')
+        contexts = [
+            Context(id=1, title="France", text="The capital of France is Paris.", score=0.9),
+            Context(id=2, title="Germany", text="Berlin is the capital of Germany.", score=0.5)
         ]
 
-        generated_answers = generator.generate(documents)
-        print(generated_answers[0])  # 'Isaac Newton discovered gravity in the late 17th century.'
+        # Create a Document
+        doc = Document(question=question, answers= answers, contexts=contexts)
+
+        # Initialize Generator (e.g., Meta Llama, with huggingface backend)
+        generator = Generator(method="in-context-ralm", model_name='meta-llama/Meta-Llama-3.1-8B-Instruct', backend="huggingface")
+
+        # Generate answer
+        generated_answers = generator.generate([doc])
+        print(generated_answers)  # Output: ["Paris"]
         ```
 
     Notes:
-        - **RALM dynamically integrates retrieved passages** to guide response generation.
-        - **Optimized for retrieval-augmented question answering** (RAG).
-        - Supports **meta-llama models (Llama-3.1-8B, Llama-2, etc.)**.
+        - RALM dynamically integrates retrieved passages to guide response generation.
+        - Optimized for retrieval-augmented question answering (RAG).
+        - Prompts are constructed to encourage factual, concise answers suitable for evaluation and comparison.
     """
 
     CACHE_DIR = os.environ.get("RERANKING_CACHE_DIR", "./cache")
@@ -153,13 +163,6 @@ class InContextRALMRAG(BaseRAGMethod):
 
         Returns:
             List[str]: A list of generated answers.
-
-        Example:
-            ```python
-            generator = InContextRALMGenerator(method="in-context-ralm", model_name="meta-llama/Llama-3.1-8B")
-            documents = [Document(question=Question("Who wrote Hamlet?"))]
-            print(generator.generate(documents))  # ['William Shakespeare wrote Hamlet in the early 1600s.']
-            ```
         """
         eval_dataset = self._prepare_dataloader(documents)
 

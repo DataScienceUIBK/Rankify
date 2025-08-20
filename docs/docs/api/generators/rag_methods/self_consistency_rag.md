@@ -1,6 +1,6 @@
-# FiD RAG
+# Self-Consistency RAG
 
-::: rankify.generator..rag_methods.fid_rag_method
+::: rankify.generator.rag_methods.self_consistency_rag
     handler: python
     options:
         show_source: true

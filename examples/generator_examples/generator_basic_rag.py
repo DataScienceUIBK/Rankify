@@ -1,19 +1,21 @@
+import torch
 from rankify.dataset.dataset import Document, Question, Answer, Context
 from rankify.generator.generator import Generator
+from rankify.generator.prompt_generator import PromptGenerator
 
-# Sample question and contexts
+# Define question and answer
 question = Question("What is the capital of France?")
-answers=Answer('')
+answers=Answer("")
 contexts = [
     Context(id=1, title="France", text="The capital of France is Paris.", score=0.9),
     Context(id=2, title="Germany", text="Berlin is the capital of Germany.", score=0.5)
 ]
 
-# Create a Document
-doc = Document(question=question, answers= answers, contexts=contexts)
+# Construct document
+doc = Document(question=question, answers=answers, contexts=contexts)
 
-# Initialize Generator (e.g., Meta Llama, with huggingface backend)
-generator = Generator(method="in-context-ralm", model_name='meta-llama/Meta-Llama-3.1-8B', backend="huggingface")
+# Initialize Generator (e.g., Meta Llama)
+generator = Generator(method="basic-rag", model_name='meta-llama/Meta-Llama-3.1-8B-Instruct', backend="huggingface", torch_dtype=torch.float16)
 
 # Generate answer
 generated_answers = generator.generate([doc])

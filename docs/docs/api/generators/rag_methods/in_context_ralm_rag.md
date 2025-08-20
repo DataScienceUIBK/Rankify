@@ -1,4 +1,4 @@
-# In Context Ralm Generator
+# In Context Ralm RAG
 
 ::: rankify.generator.rag_methods.in_context_ralm_rag
     handler: python

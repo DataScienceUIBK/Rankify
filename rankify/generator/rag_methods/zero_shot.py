@@ -8,14 +8,48 @@ class ZeroShotRAG(BaseRAGMethod):
     """
     **Zero-Shot RAG** for Open-Domain Question Answering.
 
-    This class implements a zero-shot retrieval-augmented generation (RAG) method, 
-    where the model generates answers directly from the provided contexts without 
-    requiring additional fine-tuning.
+    This class implements zero-shot genration, where the model generates answers directly 
+    without any type of context. This serves as a baseline for comparison with RAG methods.
 
-    Attributes:
-        model (BaseRAGModel): The underlying model used for text generation.
+    Methods:
+        answer_questions(documents: List[Document], custom_prompt=None, **kwargs) -> List[str]:
+            Answers questions for a list of documents using the model in a zero-shot manner.
+
+    Example:
+        ```python
+        from rankify.dataset.dataset import Document, Question, Answer, Context
+        from rankify.generator.generator import Generator
+
+        # Sample question and contexts
+        question = Question("What is the capital of France?")
+        answers=Answer('')
+        contexts = [
+            Context(id=1, title="France", text="The capital of France is Paris.", score=0.9),
+            Context(id=2, title="Germany", text="Berlin is the capital of Germany.", score=0.5)
+        ]
+
+        # Create a Document
+        doc = Document(question=question, answers= answers, contexts=contexts)
+
+        # Initialize Generator (e.g., Meta Llama, with huggingface backend)
+        generator = Generator(method="basic-rag", model_name='meta-llama/Meta-Llama-3.1-8B-Instruct', backend="huggingface")
+
+        # Generate answer
+        generated_answers = generator.generate([doc])
+        print(generated_answers)  # Output: ["Paris"]
+        ```
+            
+    Notes:
+        - Suitable for baseline comparison with RAG methods.
+        - Uses the model's prompt generator to construct prompts from question.
     """
-    def __init__(self, model: BaseRAGModel, **kwargs):
+    def __init__(self, model: BaseRAGModel):
+        """
+        Initialize the ZeroShotRAG method.
+
+        Args:
+            model (BaseRAGModel): The underlying model used for text generation.
+        """
         super().__init__(model=model)
 
     def answer_questions(self, documents: List[Document], custom_prompt=None, **kwargs) -> List[str]:
@@ -24,9 +58,14 @@ class ZeroShotRAG(BaseRAGMethod):
 
         Args:
             documents (List[Document]): A list of Document objects containing questions and contexts.
+            custom_prompt (str, optional): Custom prompt to override default prompt generation.
+            **kwargs: Additional parameters for the model's generate method.
 
         Returns:
             List[str]: A list of answers.
+
+        Notes:
+            - Constructs prompts using only the question.
         """
         answers = []
 
