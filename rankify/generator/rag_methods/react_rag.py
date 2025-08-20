@@ -5,7 +5,47 @@ from rankify.generator.rag_methods.base_rag_method import BaseRAGMethod
 import re
 
 class ReActRAG(BaseRAGMethod):
-    def __init__(self, model: BaseRAGModel, retriever, max_steps: int = 20, max_contexts_per_search: int = 3, use_internal_knowledge: bool = True, **kwargs):
+    """
+    **ReActRAG (Reason+Act RAG) Method** for Retrieval-Augmented Generation.
+
+    Implements the ReAct technique, combining reasoning and action steps for open-domain question answering.
+    The model alternates between generating reasoning steps and issuing search actions to a retriever, iteratively building up context and history until a final answer is produced.
+
+    Attributes:
+        model (BaseRAGModel): The RAG model instance used for generation.
+        retriever: An external retriever instance for fetching new contexts.
+        max_steps (int): Maximum number of reasoning/search steps per question (default: 20).
+        max_contexts_per_search (int): Maximum number of contexts to add per search action (default: 3).
+        use_internal_knowledge (bool): Whether to fallback to internal knowledge if no answer is found (default: True).
+
+    Methods:
+        __init__(model, retriever, max_steps=20, max_contexts_per_search=3, use_internal_knowledge=True, **kwargs):
+            Initializes the ReActRAG method with the provided model and retriever.
+        answer_questions(documents: List[Document], custom_prompt=None, **kwargs) -> List[str]:
+            Answers questions for a list of documents using iterative reasoning and retrieval.
+
+    Notes:
+        - The method parses model outputs for "Search[query]" actions and "Final Answer:" statements.
+        - Retrieved contexts are appended to the prompt and history for subsequent steps.
+        - If no final answer is found, optionally falls back to internal knowledge or last output.
+        - Suitable for complex questions requiring multi-step reasoning and dynamic retrieval.
+
+    References:
+        - Yao et al. *ReAct: Synergizing Reasoning and Acting in Language Models*  
+          [Paper](https://arxiv.org/abs/2210.03629)
+    """
+
+    def __init__(self, model: BaseRAGModel, retriever, max_steps: int = 20, max_contexts_per_search: int = 3, use_internal_knowledge: bool = True):
+        """
+        Initialize the ReActRAG method.
+
+        Args:
+            model (BaseRAGModel): The RAG model instance used for generation.
+            retriever: An external retriever instance for fetching new contexts.
+            max_steps (int, optional): Maximum number of reasoning/search steps per question (default: 20).
+            max_contexts_per_search (int, optional): Maximum number of contexts to add per search action (default: 3).
+            use_internal_knowledge (bool, optional): Whether to fallback to internal knowledge if no answer is found (default: True).
+        """
         super().__init__(model=model)
         self.retriever = retriever  # Pass a retriever instance
         self.max_steps = max_steps
@@ -13,6 +53,22 @@ class ReActRAG(BaseRAGMethod):
         self.use_internal_knowledge = use_internal_knowledge
 
     def answer_questions(self, documents: List[Document], custom_prompt: Optional[str] = None, **kwargs) -> List[str]:
+        """
+        Answer questions for a list of documents using the ReAct reasoning and retrieval loop.
+
+        Args:
+            documents (List[Document]): A list of Document objects containing questions and contexts.
+            custom_prompt (str, optional): Custom prompt to override default prompt generation.
+            **kwargs: Additional parameters for the model's generate method.
+
+        Returns:
+            List[str]: Answers generated for each document, using iterative reasoning and retrieval.
+
+        Notes:
+            - Iteratively builds up history and context by parsing model outputs for reasoning and search actions.
+            - Stops when a "Final Answer:" is obtained or max_steps is reached.
+            - If no final answer is found, optionally falls back to internal knowledge (if self.use_internal_knowledge=True) or last output.
+        """
         answers = []
         for document in documents:
             question = document.question.question

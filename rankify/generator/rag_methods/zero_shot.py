@@ -8,14 +8,24 @@ class ZeroShotRAG(BaseRAGMethod):
     """
     **Zero-Shot RAG** for Open-Domain Question Answering.
 
-    This class implements a zero-shot retrieval-augmented generation (RAG) method, 
-    where the model generates answers directly from the provided contexts without 
-    requiring additional fine-tuning.
+    This class implements zero-shot genration, where the model generates answers directly 
+    without any type of context. This serves as a baseline for comparison with RAG methods.
 
-    Attributes:
-        model (BaseRAGModel): The underlying model used for text generation.
+    Methods:
+        answer_questions(documents: List[Document], custom_prompt=None, **kwargs) -> List[str]:
+            Answers questions for a list of documents using the model in a zero-shot manner.
+
+    Notes:
+        - Suitable for baseline comparison with RAG methods.
+        - Uses the model's prompt generator to construct prompts from question.
     """
-    def __init__(self, model: BaseRAGModel, **kwargs):
+    def __init__(self, model: BaseRAGModel):
+        """
+        Initialize the ZeroShotRAG method.
+
+        Args:
+            model (BaseRAGModel): The underlying model used for text generation.
+        """
         super().__init__(model=model)
 
     def answer_questions(self, documents: List[Document], custom_prompt=None, **kwargs) -> List[str]:
@@ -24,9 +34,14 @@ class ZeroShotRAG(BaseRAGMethod):
 
         Args:
             documents (List[Document]): A list of Document objects containing questions and contexts.
+            custom_prompt (str, optional): Custom prompt to override default prompt generation.
+            **kwargs: Additional parameters for the model's generate method.
 
         Returns:
             List[str]: A list of answers.
+
+        Notes:
+            - Constructs prompts using only the question.
         """
         answers = []
 

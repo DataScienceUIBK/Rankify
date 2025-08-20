@@ -24,8 +24,13 @@ class FiDRAGMethod(BaseRAGMethod):
         answer_questions(documents: List[Document], **kwargs) -> List[str]:
             Generates answers for a list of documents using the FiD model.
 
+    See Also:
+        - `FiDModel`: Class for FiDModel, containing the FiD specific logic.
+
     Notes:
-        - The FiD model combines multiple passages to generate better responses.
+        - This class was created to keep the unified interface of RAG methods.
+        - Since FiD is a specific RAG technique that relies on the full transformer architecture,
+          the logic is included in the model, see 
     
     """
     def __init__(self, model: BaseRAGModel, **kwargs):
@@ -33,7 +38,7 @@ class FiDRAGMethod(BaseRAGMethod):
 
     def answer_questions(self, documents: List[Document], custom_prompt=None, **kwargs) -> List[str]:
         """
-        Answer questions for a list of documents using the model.
+        Answer questions for a list of documents using the FiDModel.
 
         Args:
             documents (List[Document]): A list of Document objects containing questions and contexts.

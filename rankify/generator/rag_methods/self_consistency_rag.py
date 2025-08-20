@@ -6,7 +6,44 @@ from rankify.generator.rag_methods.base_rag_method import BaseRAGMethod
 from tqdm.auto import tqdm 
 
 class SelfConsistencyRAG(BaseRAGMethod):
-    def __init__(self, model: BaseRAGModel, num_samples: int = 5, reranker=None, **kwargs):
+    """
+    **SelfConsistencyRAG Method** for Retrieval-Augmented Generation.
+
+    Implements the self-consistency technique for multi-step question answering.
+    For each question, the model generates multiple answers with a Chain-of-Thought style prompt
+    and aggregates them using majority vote or an optional reranker, improving reliability
+    and robustness of the final answer.
+
+    Attributes:
+        model (BaseRAGModel): The RAG model instance used for generation.
+        num_samples (int): Number of answer samples to generate per question (default: 5).
+        reranker: Optional reranker instance for ranking generated answers.
+
+    Methods:
+        __init__(model, num_samples=5, reranker=None, **kwargs):
+            Initializes the SelfConsistencyRAG method with the provided model, sample count, and optional reranker.
+        answer_questions(documents: List[Document], custom_prompt=None, **kwargs) -> List[str]:
+            Generates multiple answers for each document and aggregates by majority vote or reranker.
+
+    Notes:
+        - Generates multiple answers per question using the underlying model's sampling capabilities.
+        - If a reranker is provided, uses it to select the best answer; otherwise, applies majority voting.
+        - Suitable for reducing randomness and improving answer reliability in generative QA.
+
+    References:
+        - Wang et al. *Self-consistency improves chain of thought reasoning in language models*  
+          [Paper](https://arxiv.org/abs/2203.11171)
+    """
+    def __init__(self, model: BaseRAGModel, num_samples: int = 5, reranker=None):
+        """
+        Initialize the SelfConsistencyRAG method.
+
+        Args:
+            model (BaseRAGModel): The RAG model instance used for generation.
+            num_samples (int, optional): Number of answer samples to generate per question (default: 5).
+            reranker (optional): Reranker instance for ranking generated answers.
+            **kwargs: Additional configuration parameters (unused).
+        """
         super().__init__(model=model)
         self.num_samples = num_samples
         self.reranker = reranker  # Optional: pass a reranker instance
@@ -14,6 +51,19 @@ class SelfConsistencyRAG(BaseRAGMethod):
     def answer_questions(self, documents: List[Document], custom_prompt: Optional[str] = None, **kwargs) -> List[str]:
         """
         For each document, generate multiple answers and aggregate by majority vote or reranker.
+
+        Args:
+            documents (List[Document]): A list of Document objects containing questions and contexts.
+            custom_prompt (str, optional): Custom prompt to override default prompt generation.
+            **kwargs: Additional parameters for the model's generate method.
+
+        Returns:
+            List[str]: Aggregated answers for each document.
+
+        Notes:
+            - Uses the model's prompt generator to construct Chain-of-Thought style prompt.
+            - Generates multiple answers per question using sampling and aggregates results.
+            - If a reranker is provided, selects the best answer using reranking; otherwise, applies majority voting.
         """
         answers = []
         for document in tqdm(documents, desc="Answering questions", unit="q"):
