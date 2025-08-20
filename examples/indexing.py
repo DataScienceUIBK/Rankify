@@ -114,10 +114,10 @@ def index_bge_wiki():
     print("BGE wiki indexing complete.")
 
 if __name__ == "__main__":
-    #index_bm25()
+    index_bm25()
     #index_dpr_wiki()
     #index_dpr_msmarco()
     #index_contriever_wiki()
     #index_contriever_msmarco()
     #index_colbert_wiki()
-    index_bge_wiki()
+    #index_bge_wiki()
