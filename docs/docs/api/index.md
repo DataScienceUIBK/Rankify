@@ -43,8 +43,26 @@ Below is an overview of the modules, classes, and functions available in **Ranki
 - [Vicuna Reranker](rerankings/vicuna_reranker.md)
 - [Zephyr Reranker](rerankings/zephyr_reranker.md)
 
-## Generators
-- [Base](generators/base.md)
+## Generator Module
 - [Generator](generators/generator.md)
-- [FiD Generator](generators/fid.md)
-- [In Context RALM Generator](generators/in_context_ralm.md)
+- [Prompt Generator](generators/prompt_generator.md)
+- [Prompt Template](generators/prompt_template.md)
+
+### LLM endpoints
+- [Base RAG Model](generators/models/base_rag_model.md)
+- [Model Factory](generators/models/model_factory.md)
+- [Hugging Face Model](generators/models/huggingface_model.md)
+- [LiteLLM Model](generators/models/litellm_model.md)
+- [OpenAI Model](generators/models/openai_model.md)
+- [vLLM Model](generators/models/vllm_model.md)
+- [FiD Model](generators/models/fid_model.md)
+
+### RAG methods
+- [Basic RAG Method](generators/rag_methods/basic_rag_method.md)
+- [Zero-Shot Generation](generators/rag_methods/zero_shot.md)
+- [Basic RAG](generators/rag_methods/basic_rag.md)
+- [Chain of Thought RAG](generators/rag_methods/chain_of_thought_rag.md)
+- [Self Consistency RAG](generators/rag_methods/self_consistency_rag.md)
+- [ReAct RAG](generators/rag_methods/react_rag.md)
+- [FiD](generators/rag_methods/fid_rag_method.md)
+- [In Context RALM](generators/rag_methods/in_context_ralm_rag.md)
