@@ -9,51 +9,53 @@ from rankify.utils.generator.generator_models import RAG_METHODS
 
 class Generator:
     """
-    **Generator Interface** for handling different **text generation models**.
+    **Generator Interface** for Retrieval-Augmented Generation (RAG) techniques.
 
-    This class serves as a **wrapper** for multiple **answer generation models** (e.g., **FiD, GPT, T5, RALM**).
-    It dynamically initializes the appropriate model based on the provided `method`.
-
+    This class serves as a unified wrapper for all RAG methods and underlying model endpoints in Rankify.
+    It dynamically initializes the appropriate model and RAG method, using the model_factory method,
+    based on the provided `method`, `model_name`, and `backend`.
 
     Attributes:
-        generator (BaseGenerator): The initialized generator instance based on the selected method.
+        rag_method (BaseRAGMethod): The initialized RAG method instance, combining the selected model and technique.
 
     Raises:
-        ValueError: If the specified `method` is not in `GENERATOR_MODELS`.
+        ValueError: If the specified `method` is not available in `RAG_METHODS`.
 
     Example:
         ```python
         from rankify.generator.generator import Generator
         from rankify.dataset.dataset import Document, Question
 
-        generator = Generator(method="fid", model_name="nq_reader_base")
-        documents = [Document(question=Question("Who discovered gravity?"))]
+        # Example: Fusion-in-Decoder (FiD)
+        generator = Generator(method="fid", model_name="nq_reader_base", backend="fid")
+        documents = [Document(question=Question("Who wrote Hamlet?"))]
         generated_answers = generator.generate(documents)
+        print(generated_answers[0])  # Output: "William Shakespeare wrote Hamlet in the early 1600s."
 
-        print(generated_answers[0])
-        # Output: "Isaac Newton discovered gravity in the late 17th century."
+        # Example: Chain-of-Thought RAG
+        generator = Generator(method="chain-of-thought-rag", model_name="meta-llama/Meta-Llama-3.1-8B-Instruct", backend="huggingface")
+        documents = [Document(question=Question("What is the capital of France?"))]
+        print(generator.generate(documents)[0])  # Output: "Paris"
         ```
 
-        **Using In-Context Retrieval-Augmented Language Model (RALM) Generator**:
-        ```python
-        generator = Generator(method="in-context-ralm", model_name="gpt-4-ralm")
-        documents = [Document(question=Question("What is deep learning?"))]
-        print(generator.generate(documents)[0])
-        # Output: "Deep learning is a subset of machine learning that uses neural networks..."
-        ```
+    Notes:
+        - The generator puts together both the model endpoint (e.g., OpenAI, HuggingFace, FiD, vLLM) and the RAG method (e.g., basic, chain-of-thought, self-consistency).
+        - All configuration (model, backend, method, and additional kwargs) is passed to the appropriate factory and method class.
+        - Use `generate()` to obtain answers for a batch of documents, calling `answer_questions()` of the specified RAG method.
     """
 
     def __init__(self, method: str, model_name: str, backend:str = "huggingface", **kwargs):
         """
-        Initializes the selected **generator model**.
+        Initializes the selected RAG method and model.
 
         Args:
-            method (str): The generator type (`"fid"`, `"in-context-ralm"`, etc.).
-            model_name (str): The specific model name (e.g., `"nq_reader_base"`, `"gpt-4-ralm"`).
-            kwargs (dict): Additional parameters for model initialization.
+            method (str): The RAG technique (e.g., "fid", "chain-of-thought-rag", "self-consistency-rag").
+            model_name (str): The specific model name (e.g., "nq_reader_base", "meta-llama/Meta-Llama-3.1-8B-Instruct").
+            backend (str): The model backend ("huggingface", "openai", "fid", "vllm", etc.).
+            **kwargs: Additional parameters for model and method initialization.
 
         Raises:
-            ValueError: If the specified `method` is not available in `GENERATOR_MODELS`.
+            ValueError: If the specified `method` is not available in `RAG_METHODS`.
         """
         if method not in RAG_METHODS:
             raise ValueError(f"Generator method {method} is not supported.")
@@ -70,20 +72,15 @@ class Generator:
 
     def generate(self, documents, custom_prompt=None,**kwargs):
         """
-        Generates answers based on the **input documents**.
+        Generates answers for a batch of input documents using the selected RAG method.
 
         Args:
             documents (List[Document]): A list of `Document` objects containing queries and retrieved contexts.
+            custom_prompt (str, optional): Custom prompt to override default prompt generation.
+            **kwargs: Additional parameters for the RAG method's answer logic or model generation.
 
         Returns:
-            List[str]: A list of generated **answers**, one for each document.
+            List[str]: A list of generated answers, one for each document.
 
-        Example:
-            ```python
-            generator = Generator(method="fid", model_name="nq_reader_base")
-            documents = [Document(question=Question("Who wrote Hamlet?"))]
-            print(generator.generate(documents))
-            # Output: ['William Shakespeare wrote Hamlet in the early 1600s.']
-            ```
         """
         return self.rag_method.answer_questions(documents, custom_prompt, **kwargs)
