@@ -1,4 +1,4 @@
-# Base RAG Model
+# FiD Model
 
 ::: rankify.generator.models.fid_model
     handler: python

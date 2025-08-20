@@ -1,4 +1,4 @@
-# FiD Generator
+# FiD RAG
 
 ::: rankify.generator..rag_methods.fid_rag_method
     handler: python
