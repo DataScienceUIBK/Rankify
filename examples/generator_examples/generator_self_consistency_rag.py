@@ -36,7 +36,7 @@ generation_kwargs = dict(
 
 generator = Generator(
     method="self-consistency-rag",
-    model_name='meta-llama/Meta-Llama-3.1-8B',
+    model_name='meta-llama/Meta-Llama-3.1-8B-Instruct',
     backend="huggingface",
     torch_dtype=torch.float16,
     num_samples=10,  # Number of samples for self-consistency
