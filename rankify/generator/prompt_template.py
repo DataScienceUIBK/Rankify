@@ -26,6 +26,7 @@ class PromptTemplate(Enum):
     ZERO_SHOT = "zero-shot"
     SELF_CONSISTENCY_RAG = "self-consistency-rag"
     REACT_RAG = "react-rag"
+    IN_CONTEXT_RALM="in-context-ralm"
 
 DEFAULT_PROMPTS = {
     PromptTemplate.BASIC_RAG: (
@@ -76,5 +77,12 @@ DEFAULT_PROMPTS = {
         "Question: {question}\n"
         "Contexts:\n{contexts}\n"
         "Thought:"
+    ),
+    PromptTemplate.IN_CONTEXT_RALM: (
+        "You are a helpful assistant. Give a single, concise answer to the question using the provided contexts.\n"
+        "If the provided contexts are not sufficient, you may also use your own knowledge"
+        "Question: {question}\n"
+        "Contexts:\n{contexts}\n"
+        "Answer:"
     )
 }
