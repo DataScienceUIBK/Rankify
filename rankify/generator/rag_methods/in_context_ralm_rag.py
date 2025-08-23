@@ -84,6 +84,7 @@ class InContextRALMRAG(BaseRAGMethod):
             generator = InContextRALMGenerator(method="in-context-ralm", model_name="meta-llama/Llama-3.1-8B")
             ```
         """
+        self.base_rag_model = model
         self.model = model.model
         self.tokenizer = model.tokenizer
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -100,33 +101,6 @@ class InContextRALMRAG(BaseRAGMethod):
         self.max_length = self.config.n_positions if hasattr(self.config, "n_positions") else self.config.max_position_embeddings
         self.max_tokens_to_generate = kwargs.get("max_tokens_to_generate", 10)
 
-    def _build_qa_prompt(self, example):
-        """
-        Constructs the **QA prompt** for in-context learning.
-
-        Args:
-            example (dict): A dictionary containing question and retrieved contexts.
-
-        Returns:
-            str: The constructed prompt with retrieved passages.
-
-        Example:
-            ```python
-            example = {
-                "question": "Who invented the light bulb?",
-                "ctxs": [{"title": "Edison", "text": "Thomas Edison patented the light bulb."}]
-            }
-            prompt = generator._build_qa_prompt(example)
-            ```
-        """
-        question = example["question"]
-        question = question[0].lower() + question[1:] if not question.endswith("?") else question
-
-        if self.num_docs == 0:
-            return f"Answer these questions:\nQ: {question}\nA:"
-        
-        docs_text = "\n\n".join([f"{ctx['title']}\n\n{ctx['text']}" for ctx in example["ctxs"][:self.num_docs]])
-        return f"{docs_text}\n\nBased on these texts, answer these questions in the shortest, most precise way possible. I need a factual answer since I want to compare your answer.:\nQ: {question}\nA:"
 
     def _prepare_dataloader(self, documents: list[Document]):
         """
@@ -168,7 +142,12 @@ class InContextRALMRAG(BaseRAGMethod):
 
         results = []
         for example in tqdm(eval_dataset, desc="Answering questions", unit="q"):
-            prompt = self._build_qa_prompt(example)
+            context_strs = [f"{ctx['title']}\n\n{ctx['text']}" for ctx in example["ctxs"][:self.num_docs]]
+            prompt = self.base_rag_model.prompt_generator.generate_user_prompt(
+                question=example["question"],
+                contexts=context_strs,
+                custom_prompt=custom_prompt
+            )
 
             tokenized_input = self.tokenizer(prompt, return_tensors="pt", padding=True, truncation=True)
             input_ids = tokenized_input.input_ids.to(self.device)
