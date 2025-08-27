@@ -43,7 +43,7 @@ class ZeroShotRAG(BaseRAGMethod):
         - Suitable for baseline comparison with RAG methods.
         - Uses the model's prompt generator to construct prompts from question.
     """
-    def __init__(self, model: BaseRAGModel):
+    def __init__(self, model: BaseRAGModel, **kwargs):
         """
         Initialize the ZeroShotRAG method.
 

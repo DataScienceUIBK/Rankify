@@ -48,7 +48,7 @@ class BasicRAG(BaseRAGMethod):
         - This method does not apply advanced reasoning or fusion techniques.
         - Suitable as a baseline for comparison with more sophisticated RAG methods.
     """
-    def __init__(self, model: BaseRAGModel):
+    def __init__(self, model: BaseRAGModel, **kwargs):
         """
         Initialize the BasicRAG method.
 

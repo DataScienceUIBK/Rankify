@@ -74,7 +74,7 @@ class ReActRAG(BaseRAGMethod):
           [Paper](https://arxiv.org/abs/2210.03629)
     """
 
-    def __init__(self, model: BaseRAGModel, retriever, max_steps: int = 20, max_contexts_per_search: int = 3, use_internal_knowledge: bool = True):
+    def __init__(self, model: BaseRAGModel, retriever, max_steps: int = 20, max_contexts_per_search: int = 3, use_internal_knowledge: bool = True, **kwargs):
         """
         Initialize the ReActRAG method.
 
@@ -111,6 +111,7 @@ class ReActRAG(BaseRAGMethod):
         answers = []
         for document in documents:
             question = document.question.question
+            print("answering question: " + document.question.question)
             contexts = [context.text for context in document.contexts]
             history = []
             final_answer = None

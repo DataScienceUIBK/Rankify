@@ -85,7 +85,7 @@ class SelfConsistencyRAG(BaseRAGMethod):
         - If a reranker is provided, uses it to select the best answer; otherwise, applies majority voting.
         - Suitable for reducing randomness and improving answer reliability in generative QA.
     """
-    def __init__(self, model: BaseRAGModel, num_samples: int = 5, reranker=None):
+    def __init__(self, model: BaseRAGModel, num_samples: int = 5, reranker=None, **kwargs):
         """
         Initialize the SelfConsistencyRAG method.
 
