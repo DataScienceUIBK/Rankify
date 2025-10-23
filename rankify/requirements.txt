@@ -1,7 +1,7 @@
 pandas==2.2.3
 prettytable==3.11.0
 tqdm==4.66.5
-requests==2.32.3
+requests==2.32.4
 torch==2.5.0
 transformers==4.45.2
 sentencepiece==0.2.0
