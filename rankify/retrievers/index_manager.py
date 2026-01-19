@@ -296,7 +296,7 @@ class IndexManager:
             # If it's a dict, iterate through it
             for doc_id, doc_data in data.items():
                 if isinstance(doc_data, dict):
-                    contents = doc_data.get("contents", "")
+                    contents = doc_data.get("contents") or doc_data.get("text") or ""
                     title = doc_data.get("title", contents[:100] if contents else "No Title")
                 else:
                     # If doc_data is a string, use it as contents

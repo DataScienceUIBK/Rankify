@@ -172,7 +172,7 @@ class DPRIndexer(BaseIndexer):
             "--corpus", str(dense_file),
 
             "output",
-            "--embeddings", str(self.index_dir),
+            "--embeddings", str(self.index_dir / "embeddings"),
 
             "encoder",
             "--encoder", self.encoder_name,
@@ -195,7 +195,7 @@ class DPRIndexer(BaseIndexer):
         # Now index the dense vectors into FAISS
         index_cmd = [
             "python", "-m", "pyserini.index.faiss",
-            "--input", str(self.index_dir),
+            "--input", str(self.index_dir / "embeddings"),
             "--output", str(self.index_dir),
         ]
 

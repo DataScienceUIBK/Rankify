@@ -212,7 +212,7 @@ class DenseRetriever(BaseRetriever):
                     # Custom corpus format
                     doc_data = self.corpus.get(str(hit.docid), {})
                     if doc_data:
-                        text = doc_data.get("contents", "")
+                        text = doc_data.get("contents") or doc_data.get("text", "") or ""
                         title = doc_data.get("title", "")
                         # Use ID mapping if available
                         if self.id_mapping:
