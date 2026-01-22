@@ -44,25 +44,25 @@ dependencies  = [
   "pandas==2.2.3",
   "prettytable==3.11.0", 
   "tqdm==4.66.5",
-  "requests==2.32.3",
+  "requests==2.32.4",
   "httpx==0.27.2",
   "dacite==1.8.1",
   "ftfy==6.3.1",
   
   # ML Core
-  "transformers==4.45.2",
+  "transformers==4.53.0",
   "datasets==3.2.0",
   "sentence_transformers==3.3.0",
   "onnxruntime==1.19.2",
   
   # Basic NLP
-  "sentencepiece==0.2.0",
+  "sentencepiece==0.2.1",
 ]
 
 [project.optional-dependencies]
 reranking = [
   # LLM serving - made optional and more flexible
-  "vllm==0.7.0",
+  "vllm==0.14.0",
   "ninja==1.11.1.3",
   
   # Specialized rerankers - fixed versions
