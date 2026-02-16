@@ -10,6 +10,12 @@ from .colbert_retriever import ColBERTRetriever
 from .contriever_retriever import ContrieverRetriever
 from .online_retriever import OnlineRetriever
 from .hyde_retriever import HydeRetriever
+from .diver_dense_retriever import DiverDenseRetriever
+from .diver_bm25_retriever import DiverBM25Retriever
+from .reasonir_retriever import ReasonIRRetriever
+from .reasonembed_retriever import ReasonEmbedRetriever
+from .bge_reasoner_retriever import BgeReasonerRetriever
+
 
 __all__ = [
     "Retriever",
@@ -22,4 +28,9 @@ __all__ = [
     "ContrieverRetriever",
     "OnlineRetriever",
     "HydeRetriever",
+    "DiverDenseRetriever",
+    "DiverBM25Retriever",
+    "ReasonIRRetriever",
+    "ReasonEmbedRetriever",
+    "BgeReasonerRetriever",
 ]
