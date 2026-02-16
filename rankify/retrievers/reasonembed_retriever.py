@@ -102,13 +102,13 @@ class ReasonEmbedRetriever(BaseRetriever):
     def _load_model(self):
         # ReasonEmbed SentenceTransformer models
         if self.model_id == "qwen3-8b":
-            self.model = SentenceTransformer(self.checkpoint or "hanhainebula/reason-embed-qwen3-8b-0928", trust_remote_code=True)
+            self.model = SentenceTransformer(self.checkpoint or "hanhainebula/reason-embed-qwen3-8b-0928", trust_remote_code=True, device=self.device)
             self.model = self.model.to(self.device)
         elif self.model_id == "qwen3-4b":
-            self.model = SentenceTransformer(self.checkpoint or "hanhainebula/reason-embed-qwen3-4b-0928", trust_remote_code=True)
+            self.model = SentenceTransformer(self.checkpoint or "hanhainebula/reason-embed-qwen3-4b-0928", trust_remote_code=True, device=self.device)
             self.model = self.model.to(self.device)
         elif self.model_id == "llama-8b":
-            self.model = SentenceTransformer(self.checkpoint or "hanhainebula/reason-embed-llama-3.1-8b-0928", trust_remote_code=True)
+            self.model = SentenceTransformer(self.checkpoint or "hanhainebula/reason-embed-llama-3.1-8b-0928", trust_remote_code=True, device=self.device)
             self.model = self.model.to(self.device)
         else:
             raise ValueError(f"The model {self.model_id} is not supported")

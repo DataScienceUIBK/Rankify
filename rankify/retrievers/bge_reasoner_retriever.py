@@ -99,7 +99,7 @@ class BgeReasonerRetriever(BaseRetriever):
     def _load_model(self):
         # ReasonEmbed SentenceTransformer models
         if self.model_id == "bge-reasoner-embed":
-            self.model = SentenceTransformer(self.checkpoint or "BAAI/bge-reasoner-embed-qwen3-8b-0923", trust_remote_code=True)
+            self.model = SentenceTransformer(self.checkpoint or "BAAI/bge-reasoner-embed-qwen3-8b-0923", trust_remote_code=True, device=self.device)
             self.model = self.model.to(self.device)
         else:
             raise ValueError(f"The model {self.model_id} is not supported")

@@ -149,18 +149,18 @@ class DiverDenseRetriever(BaseRetriever):
     def _load_model(self):
         # SentenceTransformer models
         if self.model_id == "bge":
-            self.model = SentenceTransformer('BAAI/bge-large-en-v1.5')
+            self.model = SentenceTransformer('BAAI/bge-large-en-v1.5', device=self.device)
         elif self.model_id == "sbert":
-            self.model = SentenceTransformer('sentence-transformers/all-mpnet-base-v2')
+            self.model = SentenceTransformer('sentence-transformers/all-mpnet-base-v2', device=self.device)
         elif self.model_id == "contriever_st":
-            self.model = SentenceTransformer('nishimoto/contriever-sentencetransformer')
+            self.model = SentenceTransformer('nishimoto/contriever-sentencetransformer', device=self.device)
         elif self.model_id == "nomic":
-            self.model = SentenceTransformer(self.checkpoint or "nomic-ai/nomic-embed-text-v1", trust_remote_code=True)
+            self.model = SentenceTransformer(self.checkpoint or "nomic-ai/nomic-embed-text-v1", trust_remote_code=True, device=self.device)
         elif self.model_id == "inst-l":
-            self.model = SentenceTransformer("hkunlp/instructor-large")
+            self.model = SentenceTransformer("hkunlp/instructor-large", device=self.device)
             self.model.max_seq_length = self.doc_max_length
         elif self.model_id == "inst-xl":
-            self.model = SentenceTransformer("hkunlp/instructor-xl")
+            self.model = SentenceTransformer("hkunlp/instructor-xl", device=self.device)
             self.model.max_seq_length = self.doc_max_length
         
         # HF AutoModel models (sf, e5, rader)
