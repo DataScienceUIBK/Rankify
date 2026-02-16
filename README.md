@@ -112,7 +112,7 @@ https://github.com/user-attachments/assets/13184943-55db-4f0c-b509-fde920b809bc
 
 
 ## 🎉News
-- **[2026-02-16]** Huge thanks to [@JamieHoldcroft](https://github.com/JamieHoldcroft) for integrating **15+** new dense retrievers, including SOTA LLM-based bi-encoders (**SFR**, **E5**, **GritLM**) and reasoning-intensive models (**RaDeR**, **ReasonIR**, **ReasonEmbed**, **BGE-Reasoner**)
+- **[2026-02-16]** Huge thanks to [@JamieHoldcroft](https://github.com/JamieHoldcroft) for integrating **15+** new dense retrievers, including SOTA LLM-based bi-encoders (**SFR**, **E5**, **GritLM**) and reasoning-augmented models (**RaDeR**, **ReasonIR**, **ReasonEmbed**, **BGE-Reasoner**).
 
 -  **[2025-10-14]** Updated installation with optional extras: `retriever`, `reranking`, `rag`, and `all`.
 - **[2025-10-14]** New **CLI** (`rankify-index`) syntax & examples for **BM25, DPR, ANCE, Contriever, ColBERT, BGE**.
@@ -1345,12 +1345,22 @@ print("RAGAS (OpenAI):", {k: v for k, v in scores_openai.items() if k.startswith
 - ✅ **[BGE](https://arxiv.org/abs/2402.03216)** 
 - ✅ **[Contriever](https://arxiv.org/abs/2112.09118)** 
 - ✅ **[BPR](https://arxiv.org/abs/2106.00882)** 
-- ✅ **[HYDE](https://arxiv.org/abs/2212.10496)** 
+- ✅ **[HYDE](https://arxiv.org/abs/2212.10496)**
+- ✅ **[SFR](https://huggingface.co/Salesforce/SFR-Embedding-Mistral)**
+- ✅ **[E5](https://arxiv.org/abs/2212.03533)**
+- ✅ **[GritLM](https://arxiv.org/abs/2402.09906)**
+- ✅ **[M2](https://arxiv.org/abs/2310.12109)**
+- ✅ **[Nomic](https://arxiv.org/abs/2402.01613)**
+- ✅ **[Instructor](https://arxiv.org/abs/2212.09741)** 
+- ✅ **[RaDeR](https://arxiv.org/abs/2505.18405)**
+- ✅ **[ReasonIR](https://arxiv.org/abs/2504.20595)** 
+- ✅ **[BGE-Reasoner](https://huggingface.co/BAAI/bge-en-icl)**
+- ✅ **[ReasonEmbed](https://arxiv.org/abs/2510.08252)**
 - 🕒 **RepLlama**
 - 🕒 **coCondenser**   
 - 🕒 **Spar** 
 - 🕒 **Dragon** 
-- 🕒 **Hybird** 
+- 🕒 **Hybrid** 
 ---
 
 ### **2️⃣ Rerankers**  
@@ -1409,7 +1419,7 @@ print("RAGAS (OpenAI):", {k: v for k, v in scores_openai.items() if k.startswith
 
 - 🔥 **Unified Framework**: Combines **retrieval**, **re-ranking**, and **retrieval-augmented generation (RAG)** into a single modular toolkit.  
 - 📚 **Rich Dataset Support**: Includes **40+ benchmark datasets** with **pre-retrieved documents** for seamless experimentation.  
-- 🧲 **Diverse Retrieval Methods**: Supports **BM25, DPR, ANCE, BPR, ColBERT, BGE, and Contriever** for flexible retrieval strategies.  
+- 🧲 **Diverse Retrieval Methods**: Supports **BM25, DPR, ANCE, BPR, ColBERT, BGE, Contriever, SFR, E5, GritLM, M2, Nomic, Instructor, RaDeR, ReasonIR, BGE-Reasoner and  ReasonEmbed** for flexible retrieval strategies.  
 - 🎯 **Powerful Re-Ranking**: Implements **24 advanced models** with **41 sub-methods** to optimize ranking performance.  
 - 🏗️ **Prebuilt Indices**: Provides **Wikipedia and MS MARCO** corpora, eliminating indexing overhead and speeding up retrieval.  
 - 🔮 **Seamless RAG Integration**: Works with backends like **Hugging Face, OpenAI, vLLM, LiteLLM** inferening models like **GPT, LLAMA, T5, and Fusion-in-Decoder (FiD)** for multiple **retrieval-augmented generation** methods.  
@@ -1482,6 +1492,9 @@ Rankify is licensed under the Apache-2.0 License - see the [LICENSE](https://ope
 ## 🙏 Acknowledgments  
 
 We would like to express our gratitude to the following libraries, which have greatly contributed to the development of **Rankify**:  
+
+- **Diver** – For the reference implementation of the dense retriever routing and caching logic used to integrate various bi-encoders.  
+  🔗 [GitHub Repository](https://github.com/AQ-MedAI/Diver)
 
 - **Rerankers** – A powerful Python library for integrating various reranking methods.  
   🔗 [GitHub Repository](https://github.com/AnswerDotAI/rerankers/tree/main)  
