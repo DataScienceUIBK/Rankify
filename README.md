@@ -112,6 +112,8 @@ https://github.com/user-attachments/assets/13184943-55db-4f0c-b509-fde920b809bc
 
 
 ## 🎉News
+- **[2026-02-16]** Huge thanks to [@JamieHoldcroft](https://github.com/JamieHoldcroft) for integrating **15+** new dense retrievers, including SOTA LLM-based bi-encoders (**SFR**, **E5**, **GritLM**) and reasoning-intensive models (**RaDeR**, **ReasonIR**, **ReasonEmbed**, **BGE-Reasoner**)
+
 -  **[2025-10-14]** Updated installation with optional extras: `retriever`, `reranking`, `rag`, and `all`.
 - **[2025-10-14]** New **CLI** (`rankify-index`) syntax & examples for **BM25, DPR, ANCE, Contriever, ColBERT, BGE**.
 
