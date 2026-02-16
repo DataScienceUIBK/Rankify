@@ -10,6 +10,11 @@ from .colbert_retriever import ColBERTRetriever
 from .contriever_retriever import ContrieverRetriever
 from .online_retriever import OnlineRetriever
 from .hyde_retriever import HydeRetriever
+from .diver_dense_retriever import DiverDenseRetriever
+from .diver_bm25_retriever import DiverBM25Retriever
+from .reasonir_retriever import ReasonIRRetriever
+from .reasonembed_retriever import ReasonEmbedRetriever
+from .bge_reasoner_retriever import BgeReasonerRetriever
 
 # Method mapping - UPDATED WITH PROPER ANCE SUPPORT
 METHOD_MAP: Dict[str, Type[BaseRetriever]] = {
@@ -23,6 +28,11 @@ METHOD_MAP: Dict[str, Type[BaseRetriever]] = {
     "contriever": ContrieverRetriever, 
     "online": OnlineRetriever, 
     "hyde": HydeRetriever, 
+    "diver-dense": DiverDenseRetriever,
+    "diver-bm25": DiverBM25Retriever,
+    "reasonir": ReasonIRRetriever,
+    "reason-embed": ReasonEmbedRetriever,
+    "bge-reasoner-embed": BgeReasonerRetriever,
 }
 
 class Retriever:
@@ -91,6 +101,19 @@ class Retriever:
             "n_docs": self.n_docs,
             **self.kwargs
         }
+
+        # UPDATED: Handles no-index retrievers
+        NO_INDEX_METHODS = {
+            "diver-dense",
+            "diver-bm25",
+            "reasonir",
+            "reason-embed",
+            "bge-reasoner-embed",
+        }
+        # No index retrievers do NOT use index_type or index_folder
+            # They require corpus_path + model_id via kwargs
+        if self.method in NO_INDEX_METHODS:
+            return retriever_class(**init_params)
         
         # UPDATED: Handle all ANCE variants the same way (with index_type support)
         if self.method in ["ance", "ance-msmarco", "ance-multi"]:
