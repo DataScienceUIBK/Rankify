@@ -851,6 +851,8 @@ rankify-index index data/wikipedia_100.jsonl \
 ### 2️⃣ Running Retrieval
 To perform retrieval using **Rankify**, you can choose from various retrieval methods such as **BM25, DPR, ANCE, Contriever, ColBERT, and BGE**.  
 
+### Step 1: Setup example queries
+
 **Example: Running Retrieval on Sample Queries**  
 ```python
 from rankify.dataset.dataset import Document, Question, Answer, Context
@@ -870,6 +872,10 @@ documents = [
     Document(question=Question("Who wrote Hamlet?"), answers=Answer(["Shakespeare"]), contexts=[])
 ]
 ```
+### Step 2: Choose Retrieval Option
+
+**Option A:** 
+Retrieval  ```index_type``` (e.g., ```"wiki```", "```msmarco```") to load pre-computed FAISS indices.
 
 ```python
 # BM25 retrieval on Wikipedia
@@ -885,11 +891,13 @@ dpr_retriever_wiki = Retriever(method="dpr", model="dpr-multi", n_docs=5, index_
 # DPR (multi-encoder) retrieval on MS MARCO
 dpr_retriever_msmacro = Retriever(method="dpr", model="dpr-multi", n_docs=5, index_type="msmarco")
 
+
 # DPR (single-encoder) retrieval on Wikipedia
 dpr_retriever_wiki = Retriever(method="dpr", model="dpr-single", n_docs=5, index_type="wiki")
 
 # DPR (single-encoder) retrieval on MS MARCO
 dpr_retriever_msmacro = Retriever(method="dpr", model="dpr-single", n_docs=5, index_type="msmarco")
+
 
 # ANCE retrieval on Wikipedia
 ance_retriever_wiki = Retriever(method="ance", model="ance-multi", n_docs=5, index_type="wiki")
@@ -926,6 +934,55 @@ hyde_retriever_wiki = Retriever(method="hyde" , n_docs=5, index_type="wiki", api
 hyde_retriever_msmacro = Retriever(method="hyde", n_docs=5, index_type="msmarco", api_key=OPENAI_API_KEY)
 ```
 
+**Option B:**
+Retrieval with custom datasets and automated caching.
+
+Featuring some of the latest 7B+ parameter models, all of the models below are purposed only for usage with custom datasets. 
+
+Simply provide a corpus_path to a ```.jsonl``` file, and the model will embed and cache the data locally on the first run.
+
+```python
+# Bi-encoders as implemented in the diver framework (11 configurable models, specified by model_id)
+bge_large_retriever = Retriever(method="diver-dense", model_id="bge", corpus_path="data/my_corpus.jsonl", encode_batch_size=8, n_docs=5)
+
+sbert_retriever = Retriever(method="diver-dense", model_id="sbert", corpus_path="data/my_corpus.jsonl", encode_batch_size=8, n_docs=5)
+
+inst_l_retriever = Retriever(method="diver-dense", model_id="inst-l", corpus_path="data/my_corpus.jsonl", encode_batch_size=8, n_docs=5)
+
+inst_xl_retriever = Retriever(method="diver-dense", model_id="inst-xl", corpus_path="data/my_corpus.jsonl", encode_batch_size=8, n_docs=5)
+
+sfr_retriever = Retriever(method="diver-dense", model_id="sf", corpus_path="data/my_corpus.jsonl", encode_batch_size=8, n_docs=5)
+
+e5_retriever = Retriever(method="diver-dense", model_id="e5", corpus_path="data/my_corpus.jsonl", encode_batch_size=8, n_docs=5)
+
+contriever_retriever = Retriever(method="diver-dense", model_id="contriever", corpus_path="data/my_corpus.jsonl", encode_batch_size=8, n_docs=5)
+
+m2_retriever = Retriever(method="diver-dense", model_id="m2", corpus_path="data/my_corpus.jsonl", encode_batch_size=8, n_docs=5)
+
+grit_retriever = Retriever(method="diver-dense", model_id="grit", corpus_path="data/my_corpus.jsonl", encode_batch_size=8, n_docs=5)
+
+rader_retriever = Retriever(method="diver-dense", model_id="rader", corpus_path="data/my_corpus.jsonl", encode_batch_size=8, n_docs=5)
+
+nomic_retriever = Retriever(method="diver-dense", model_id="nomic", corpus_path="data/my_corpus.jsonl", encode_batch_size=4, n_docs=5)
+
+
+# Reasonir retrieval 
+reasonir_retriever = Retriever(method="reasonir", corpus_path="data/my_corpus.jsonl", encode_batch_size=4, n_docs=5)
+
+
+# ReasonEmbed retrieval (3 configurable models specified by model_id)
+reasonembed_qwen8b_retriever = Retriever(method="reason-embed", model_id="qwen3-8b", corpus_path="data/my_corpus.jsonl", encode_batch_size=8, n_docs=5)
+
+reasonembed_llama8b_retriever = Retriever(method="reason-embed", model_id="qwen3-4b", corpus_path="data/my_corpus.jsonl", encode_batch_size=8, n_docs=5)
+
+reasonembed_qwen4b_retriever = Retriever(method="reason-embed", model_id="llama-8b", corpus_path="data/my_corpus.jsonl", encode_batch_size=8, n_docs=5)
+
+
+# BgeReasonEmbed retrieval
+bge_reasoner_retriever = Retriever(method="bge-reasoner-embed", corpus_path="data/my_corpus.jsonl", encode_batch_size=8, n_docs=5)
+```
+
+### Step 3: Execute and View Results
 **Running Retrieval**
 
 After defining the retriever, you can retrieve documents using:
