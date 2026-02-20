@@ -6,13 +6,13 @@ export function cn(...inputs) {
     return twMerge(clsx(inputs));
 }
 
-// Glass Card Component
-export function GlassCard({ children, className, hover = true, ...props }) {
+// Flat Card Component (Replacing GlassCard)
+export function Card({ children, className, noPadding = false, ...props }) {
     return (
         <div
             className={cn(
-                "glass-panel w-full",
-                !hover && "hover:bg-panel hover:shadow-none hover:transform-none",
+                "bg-white border border-slate-200 rounded-xl shadow-sm text-slate-800",
+                !noPadding && "p-6",
                 className
             )}
             {...props}
@@ -22,7 +22,7 @@ export function GlassCard({ children, className, hover = true, ...props }) {
     );
 }
 
-// Gradient Button Component
+// Clean Button Component
 export function Button({
     children,
     variant = 'primary',
@@ -33,35 +33,46 @@ export function Button({
     return (
         <button
             className={cn(
-                "btn",
+                "btn-base",
                 variant === 'primary' ? 'btn-primary' : 'btn-secondary',
                 className
             )}
             {...props}
         >
-            {Icon && <Icon className="w-4 h-4" />}
+            {Icon && <Icon className="w-4 h-4 mr-2" />}
             {children}
         </button>
     );
 }
 
-// Glowing Input Component
+// Clean Input Component
 export function Input({ label, className, ...props }) {
     return (
-        <div className="input-group w-full">
-            {label && <label className="input-label">{label}</label>}
+        <div className="flex flex-col gap-1.5 w-full">
+            {label && <label className="text-sm font-medium text-slate-700">{label}</label>}
             <input
-                className={cn("glass-input", className)}
+                className={cn("input-base", className)}
                 {...props}
             />
         </div>
     );
 }
 
-// Badge Component
-export function Badge({ children, color = 'blue', className }) {
+// Clean Badge Component
+export function Badge({ children, variant = 'gray', className }) {
+    const variants = {
+        gray: 'bg-slate-100 text-slate-700 border border-slate-200',
+        blue: 'bg-blue-50 text-blue-700 border border-blue-200',
+        green: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+        purple: 'bg-purple-50 text-purple-700 border border-purple-200',
+    };
+
     return (
-        <span className={cn(`badge badge-${color}`, className)}>
+        <span className={cn(
+            "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium tracking-wide",
+            variants[variant] || variants.gray,
+            className
+        )}>
             {children}
         </span>
     );
