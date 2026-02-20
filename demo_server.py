@@ -163,8 +163,8 @@ class PipelineRequest(BaseModel):
     generator: str = "azure"     # azure | openai | claude | llama-3 | fid | zero-shot
     ragMethod: str = "auto"      # auto | basic-rag | chain-of-thought-rag | self-consistency-rag
     dataSource: str = "wiki"
-    n_docs: int = 10
-    n_contexts: int = 5
+    n_docs: int = 100
+    n_contexts: int = 10
 
 
 class DocOut(BaseModel):

@@ -24,12 +24,21 @@ function Btn({ children, disabled, onClick, className = "", type = "button" }: {
 
 // ─── Model Definitions ─────────────────────────────────────────────────────────
 const RETRIEVERS = [
-    { value: "bm25", label: "BM25 (Sparse)" },
-    { value: "dpr", label: "DPR" },
-    { value: "ance", label: "ANCE" },
-    { value: "contriever", label: "Contriever" },
-    { value: "colbert", label: "ColBERTv2" },
-    { value: "bge", label: "BGE-v1.5" },
+    { value: "bm25", label: "BM25 (Sparse)", group: "Sparse" },
+    { value: "dpr-multi", label: "DPR Multi", group: "Dense" },
+    { value: "dpr-single", label: "DPR Single", group: "Dense" },
+    { value: "ance-multi", label: "ANCE Multi", group: "Dense" },
+    { value: "bpr-single", label: "BPR Single", group: "Dense" },
+    { value: "bge", label: "BGE v1.5", group: "Dense" },
+    { value: "colbert", label: "ColBERTv2", group: "Dense" },
+    { value: "contriever", label: "Contriever", group: "Dense" },
+    { value: "online", label: "Online (Web)", group: "Online" },
+    { value: "hyde", label: "HyDE (Hypothetical)", group: "Advanced" },
+    { value: "diver-dense", label: "Diver Dense", group: "Advanced" },
+    { value: "diver-bm25", label: "Diver BM25", group: "Advanced" },
+    { value: "reasonir", label: "ReasonIR", group: "Reasoning" },
+    { value: "reason-embed", label: "Reason-Embed", group: "Reasoning" },
+    { value: "bge-reasoner-embed", label: "BGE Reasoner Embed", group: "Reasoning" },
 ];
 
 const RERANKER_CATEGORIES = [
@@ -207,6 +216,43 @@ function PipelineViz({ msg, cfg }: { msg: ChatMsg; cfg: Cfg }) {
     );
 }
 
+// ─── New-Pipeline Modal ───────────────────────────────────────────────────────
+function NewPipelineModal({ onClose, onCreate }: {
+    onClose: () => void;
+    onCreate: (mode: PipelineMode) => void;
+}) {
+    const modes: { mode: PipelineMode; icon: string; title: string; desc: string; color: string }[] = [
+        { mode: "retrieve", icon: "🔍", title: "Retrieve", color: "border-emerald-300 hover:bg-emerald-50", desc: "Search and retrieve relevant documents only. Best for exploring what's in the corpus." },
+        { mode: "rerank", icon: "🔀", title: "Retrieve + Rerank", color: "border-indigo-300 hover:bg-indigo-50", desc: "Retrieve candidates then re-score them with a cross-encoder for higher precision." },
+        { mode: "rag", icon: "✨", title: "Full RAG Pipeline", color: "border-violet-300 hover:bg-violet-50", desc: "Retrieve → Rerank → Generate. Get a synthesised answer grounded in real documents." },
+    ];
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <div className="relative bg-white rounded-2xl shadow-2xl w-[480px] max-w-[94vw] p-6 z-10" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-bold text-slate-800">Choose a Pipeline Mode</h2>
+                    <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700">
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+                <div className="space-y-3">
+                    {modes.map(m => (
+                        <button key={m.mode} onClick={() => { onCreate(m.mode); onClose(); }}
+                            className={`w-full text-left flex items-start gap-3 p-4 rounded-xl border-2 transition-all ${m.color}`}>
+                            <span className="text-2xl mt-0.5">{m.icon}</span>
+                            <div>
+                                <div className="font-semibold text-slate-800 text-sm">{m.title}</div>
+                                <div className="text-xs text-slate-500 mt-0.5 leading-relaxed">{m.desc}</div>
+                            </div>
+                        </button>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 function SidebarPanel({ sessions, activeId, onCreate, onSelect, onDelete }: {
     sessions: Session[]; activeId: string;
     onCreate: () => void; onSelect: (id: string) => void; onDelete: (id: string) => void;
@@ -223,6 +269,7 @@ function SidebarPanel({ sessions, activeId, onCreate, onSelect, onDelete }: {
             <div className="p-3">
                 <button onClick={onCreate} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-white/70 hover:text-white hover:bg-white/10 transition-all border border-white/10">
                     <Plus className="w-4 h-4" /> New Pipeline
+                    <ChevronDown className="w-3.5 h-3.5 ml-auto opacity-50" />
                 </button>
             </div>
             <div className="flex-1 overflow-y-auto px-3 py-1 space-y-0.5">
@@ -259,6 +306,7 @@ export default function ChatPage() {
     const [loading, setLoading] = useState(false);
     const [file, setFile] = useState<File | null>(null);
     const [serverOk, setServerOk] = useState<boolean | null>(null);
+    const [showModal, setShowModal] = useState(false);
     const bottomRef = useRef<HTMLDivElement>(null);
     const fileRef = useRef<HTMLInputElement>(null);
     // ↓ refs to avoid stale closures in async callbacks
@@ -287,11 +335,6 @@ export default function ChatPage() {
     // Read active session from ref (not stale closure)
     const getActive = () => stateRef.current.sessions.find(s => s.id === stateRef.current.activeId);
     const cfg = getActive()?.config ?? defCfg();
-
-    const handleModeChange = useCallback((mode: PipelineMode) => {
-        const currentCfg = getActive()?.config ?? defCfg();
-        dispatch({ type: "CREATE", s: newSess({ ...currentCfg, pipelineMode: mode }) });
-    }, []);
 
     const handleCfg = useCallback((c: Partial<Cfg>) => {
         dispatch({ type: "CFG", id: stateRef.current.activeId, c });
@@ -366,11 +409,22 @@ export default function ChatPage() {
 
     return (
         <div className="flex h-[calc(100vh-56px)] overflow-hidden bg-white">
+            {/* New-Pipeline modal */}
+            {showModal && (
+                <NewPipelineModal
+                    onClose={() => setShowModal(false)}
+                    onCreate={(mode) => {
+                        const currentCfg = getActive()?.config ?? defCfg();
+                        dispatch({ type: "CREATE", s: newSess({ ...currentCfg, pipelineMode: mode }) });
+                    }}
+                />
+            )}
+
             {/* Sidebar */}
             <aside className="w-[240px] shrink-0 hidden md:block">
                 <SidebarPanel
                     sessions={state.sessions} activeId={state.activeId}
-                    onCreate={() => dispatch({ type: "CREATE", s: newSess() })}
+                    onCreate={() => setShowModal(true)}
                     onSelect={id => dispatch({ type: "SELECT", id })}
                     onDelete={id => dispatch({ type: "DELETE", id })} />
             </aside>
@@ -380,19 +434,23 @@ export default function ChatPage() {
 
                 {/* Config Bar */}
                 <div className="shrink-0 border-b border-slate-100 bg-white z-10">
-                    {/* Mode tabs */}
                     <div className="px-4 pt-3 pb-2 flex items-center justify-between gap-4 flex-wrap">
-                        <div className="flex gap-1 p-1 bg-slate-100 rounded-lg">
-                            {(["retrieve", "rerank", "rag"] as PipelineMode[]).map(mode => (
-                                <button key={mode} onClick={() => handleModeChange(mode)}
-                                    className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${cfg.pipelineMode === mode ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
-                                    {modeLabels[mode]}
-                                </button>
-                            ))}
+                        {/* Current mode badge + switch button */}
+                        <div className="flex items-center gap-2">
+                            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border ${cfg.pipelineMode === "retrieve" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                                    cfg.pipelineMode === "rerank" ? "bg-indigo-50 text-indigo-700 border-indigo-200" :
+                                        "bg-violet-50 text-violet-700 border-violet-200"}`}>
+                                {cfg.pipelineMode === "retrieve" ? "🔍" : cfg.pipelineMode === "rerank" ? "🔀" : "✨"}
+                                {modeLabels[cfg.pipelineMode]}
+                            </div>
+                            <button onClick={() => setShowModal(true)}
+                                className="px-2.5 py-1.5 text-xs text-slate-400 hover:text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
+                                Switch mode
+                            </button>
                         </div>
                         <div className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border ${serverOk === true ? "border-emerald-200 bg-emerald-50 text-emerald-700" :
-                                serverOk === false ? "border-red-200 bg-red-50 text-red-700" :
-                                    "border-slate-200 bg-slate-50 text-slate-500"}`}>
+                            serverOk === false ? "border-red-200 bg-red-50 text-red-700" :
+                                "border-slate-200 bg-slate-50 text-slate-500"}`}>
                             {serverOk === true ? <CheckCircle2 className="w-3 h-3" /> : serverOk === false ? <AlertCircle className="w-3 h-3" /> : <Loader2 className="w-3 h-3 animate-spin" />}
                             {serverOk === true ? "Server Online" : serverOk === false ? "Server Offline" : "Checking…"}
                         </div>
@@ -425,7 +483,7 @@ export default function ChatPage() {
 
                         <div className="flex flex-col gap-0.5">
                             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-0.5"><Search className="w-3 h-3" />Retriever</label>
-                            <Sel value={cfg.retriever} onChange={v => handleCfg({ retriever: v })} opts={RETRIEVERS} w="w-36" />
+                            <Sel value={cfg.retriever} onChange={v => handleCfg({ retriever: v })} opts={RETRIEVERS.map(r => ({ value: r.value, label: r.label }))} w="w-48" />
                         </div>
 
                         {cfg.pipelineMode !== "retrieve" && <>

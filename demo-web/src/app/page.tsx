@@ -78,7 +78,7 @@ export default function LandingPage() {
           style={{ backgroundImage: "radial-gradient(circle at 25% 60%, #6366f1 0%, transparent 50%), radial-gradient(circle at 75% 30%, #8b5cf6 0%, transparent 50%)" }} />
         <div className="relative max-w-5xl mx-auto px-6 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-semibold mb-6">
-            🔬 Open-Source Research · NeurIPS 2024
+            🔬 Open-Source Research Tool
           </div>
           <h1 className="text-5xl md:text-6xl font-black tracking-tight mb-4">
             <span className="bg-gradient-to-r from-white to-indigo-300 bg-clip-text text-transparent">Rankify</span>
@@ -106,10 +106,10 @@ export default function LandingPage() {
       {/* ── Stats row ── */}
       <section className="max-w-5xl mx-auto px-6 -mt-8 relative z-10">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard value="42" label="Datasets" sub="Across 12 NLP tasks" />
-          <StatCard value="6" label="Retrievers" sub="BM25, DPR, ANCE, ColBERT, BGE, Contriever" />
+          <StatCard value="42" label="Datasets" sub="Across 12 NLP task categories" />
+          <StatCard value="15" label="Retrievers" sub="BM25, DPR, ANCE, ColBERT, Diver, ReasonIR…" />
           <StatCard value="140+" label="Reranker Models" sub="Pointwise, Listwise, Pairwise" />
-          <StatCard value="7" label="RAG Methods" sub="Basic, CoT, Self-Consistency, FiD…" />
+          <StatCard value="7" label="RAG Methods" sub="Basic, CoT, Self-Consistency, FiD, ReAct…" />
         </div>
       </section>
 
