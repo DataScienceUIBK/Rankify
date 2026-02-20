@@ -11,8 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { ScrollArea } from "../components/ui/scroll-area";
 import { Badge } from "../components/ui/badge";
 import { Sidebar } from "../components/Sidebar";
-import { useChatHistory, type ChatMessage, type ChatSession } from "../hooks/useChatHistory";
-import { RETRIEVERS, RERANKER_CATEGORIES, GENERATORS } from "../lib/models";
+import { useChatHistory, type ChatMessage, type ChatSession } from "./useChatHistory";
+import { RETRIEVERS, RERANKER_CATEGORIES, GENERATORS } from "./models";
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 type PipelineMode = "retrieve" | "rerank" | "rag";
@@ -197,8 +197,8 @@ function ConfigPanel({
                 key={mode}
                 onClick={() => onUpdate({ pipelineMode: mode })}
                 className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${config.pipelineMode === mode
-                    ? "bg-white text-slate-800 shadow-sm"
-                    : "text-slate-500 hover:text-slate-700"
+                  ? "bg-white text-slate-800 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
                   }`}
               >
                 {labels[mode]}
@@ -549,8 +549,8 @@ export default function ChatPage() {
                     {/* Text bubble */}
                     {m.content && (
                       <div className={`px-4 py-3 text-[14px] leading-relaxed rounded-2xl shadow-sm ${m.role === "user"
-                          ? "bg-slate-900 text-white rounded-br-sm"
-                          : "bg-white border border-slate-200 text-slate-800 rounded-bl-sm"
+                        ? "bg-slate-900 text-white rounded-br-sm"
+                        : "bg-white border border-slate-200 text-slate-800 rounded-bl-sm"
                         }`}>
                         {m.content || (isLoading && m.role === "assistant"
                           ? <span className="flex gap-1">
