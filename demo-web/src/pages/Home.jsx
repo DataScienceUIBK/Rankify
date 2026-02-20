@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Search, Zap, Layers, Cpu, ArrowRight } from 'lucide-react';
+import { Search, Zap, Layers, Cpu, ArrowRight, Bot } from 'lucide-react';
 import { GlassCard, Button } from '../components/ui';
 import { useNavigate } from 'react-router-dom';
 
