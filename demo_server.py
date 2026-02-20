@@ -1,19 +1,17 @@
 """
-Rankify Demo Server
-===================
-A FastAPI server that accepts retriever, reranker, and generator as per-request
-parameters. This allows the demo UI to switch models without restarting the server.
+Rankify Demo Server v2
+======================
+Dynamic FastAPI server - all models configurable per-request.
+Supports Azure OpenAI, all Rankify RAG methods, and streaming.
 
 Usage:
     python demo_server.py --port 8000
 
-    # Or with default models pre-loaded for speed:
-    python demo_server.py --port 8000 --default-retriever bm25 --default-reranker flashrank
-
-Endpoints:
-    GET  /health          - Server health check
-    POST /pipeline        - Run retrieve / rerank / rag based on mode param
-    GET  /models          - List all supported models
+Environment (set in .env or export):
+    RANKIFY_AZURE_ENDPOINT    - Azure OpenAI endpoint
+    RANKIFY_AZURE_KEY         - Azure OpenAI key
+    RANKIFY_AZURE_DEPLOYMENT  - Deployment name (e.g. gpt-4o-2)
+    RANKIFY_AZURE_API_VERSION - API version
 """
 
 import os
@@ -24,6 +22,10 @@ import argparse
 import traceback
 from typing import Optional, List, Dict, Any
 
+from dotenv import load_dotenv
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), "demo-web", ".env.local"))
+load_dotenv()
+
 try:
     from fastapi import FastAPI, HTTPException
     from fastapi.middleware.cors import CORSMiddleware
@@ -31,62 +33,98 @@ try:
     from pydantic import BaseModel, Field
     import uvicorn
 except ImportError:
-    raise SystemExit("FastAPI not found. Install: pip install fastapi uvicorn")
+    raise SystemExit("Install: pip install fastapi uvicorn python-dotenv")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
+# ─── Azure / OpenAI env ────────────────────────────────────────────────────────
+AZURE_ENDPOINT   = os.getenv("RANKIFY_AZURE_ENDPOINT", "")
+AZURE_KEY        = os.getenv("RANKIFY_AZURE_KEY", "")
+AZURE_DEPLOYMENT = os.getenv("RANKIFY_AZURE_DEPLOYMENT", "gpt-4o-2")
+AZURE_API_VER    = os.getenv("RANKIFY_AZURE_API_VERSION", "2025-01-01-preview")
+
 # ─── Component Cache ───────────────────────────────────────────────────────────
-# We cache initialized components to avoid reloading heavy models on each request.
 _retriever_cache: Dict[str, Any] = {}
 _reranker_cache:  Dict[str, Any] = {}
 _generator_cache: Dict[str, Any] = {}
 
 
-def get_retriever(method: str, n_docs: int = 100, index_type: str = "wiki"):
-    key = f"{method}|{index_type}"
+def get_retriever(method: str, n_docs: int = 10, index_type: str = "wiki"):
+    key = f"{method}|{index_type}|{n_docs}"
     if key not in _retriever_cache:
         logger.info(f"Loading retriever: {method} [{index_type}]")
         from rankify.retrievers.retriever import Retriever
         _retriever_cache[key] = Retriever(method=method, n_docs=n_docs, index_type=index_type)
-        logger.info(f"Retriever loaded: {key}")
     return _retriever_cache[key]
 
 
 def get_reranker(method: str, model_name: str):
+    if method == "none":
+        return None
     key = f"{method}|{model_name}"
     if key not in _reranker_cache:
         logger.info(f"Loading reranker: {method} / {model_name}")
         from rankify.models.reranking import Reranking
         _reranker_cache[key] = Reranking(method=method, model_name=model_name)
-        logger.info(f"Reranker loaded: {key}")
     return _reranker_cache[key]
 
 
-def get_generator(method: str, model_name: str, backend: str):
-    key = f"{method}|{model_name}|{backend}"
+def get_generator(rag_method: str, model_name: str, backend: str, **kwargs):
+    key = f"{rag_method}|{model_name}|{backend}"
     if key not in _generator_cache:
-        logger.info(f"Loading generator: {method} / {model_name}")
+        logger.info(f"Loading generator: {rag_method} / {model_name} / {backend}")
         from rankify.generator.generator import Generator
-        _generator_cache[key] = Generator(method=method, model_name=model_name, backend=backend)
-        logger.info(f"Generator loaded: {key}")
+        _generator_cache[key] = Generator(method=rag_method, model_name=model_name, backend=backend, **kwargs)
     return _generator_cache[key]
 
 
-# ─── Pydantic Models ───────────────────────────────────────────────────────────
+def _resolve_generator_config(generator_id: str, rag_method_id: str) -> dict:
+    """Map UI generator + RAG method IDs to Rankify Generator params."""
+    configs = {
+        # Azure OpenAI (default)
+        "azure": dict(
+            rag_method="basic-rag", backend="openai", model_name=AZURE_DEPLOYMENT,
+            api_key=AZURE_KEY, azure_endpoint=AZURE_ENDPOINT, api_version=AZURE_API_VER,
+        ),
+        "azure-cot": dict(
+            rag_method="chain-of-thought-rag", backend="openai", model_name=AZURE_DEPLOYMENT,
+            api_key=AZURE_KEY, azure_endpoint=AZURE_ENDPOINT, api_version=AZURE_API_VER,
+        ),
+        "azure-self-consistency": dict(
+            rag_method="self-consistency-rag", backend="openai", model_name=AZURE_DEPLOYMENT,
+            api_key=AZURE_KEY, azure_endpoint=AZURE_ENDPOINT, api_version=AZURE_API_VER,
+        ),
+        "openai": dict(rag_method="basic-rag", backend="openai", model_name="gpt-4o-mini"),
+        "claude":  dict(rag_method="basic-rag", backend="anthropic", model_name="claude-3-5-sonnet-20240620"),
+        "llama-3": dict(rag_method="basic-rag", backend="vllm", model_name="meta-llama/Meta-Llama-3.1-8B-Instruct"),
+        "mistral": dict(rag_method="basic-rag", backend="vllm", model_name="mistralai/Mistral-7B-Instruct-v0.3"),
+        "fid":     dict(rag_method="fid", backend="fid", model_name="nq_reader_base"),
+        "zero-shot": dict(rag_method="zero-shot", backend="openai", model_name=AZURE_DEPLOYMENT,
+                         api_key=AZURE_KEY, azure_endpoint=AZURE_ENDPOINT, api_version=AZURE_API_VER),
+    }
+    base = configs.get(generator_id, configs["azure"]).copy()
+    # Allow RAG method override from UI
+    if rag_method_id and rag_method_id != "auto":
+        base["rag_method"] = rag_method_id
+    return base
+
+
+# ─── Models ────────────────────────────────────────────────────────────────────
 class PipelineRequest(BaseModel):
-    query: str = Field(..., description="User query")
-    mode: str = Field("rag", description="Pipeline mode: retrieve | rerank | rag")
-    retriever: str = Field("bm25", description="Retriever method")
-    rerankerCategory: str = Field("flashrank", description="Reranker category/method")
-    rerankerModel: str = Field("ms-marco-MiniLM-L-12-v2", description="Specific reranker model")
-    generator: str = Field("openai", description="Generator backend")
-    dataSource: str = Field("wiki", description="Index type: wiki | msmarco | custom")
-    n_docs: int = Field(10, description="Number of documents to retrieve")
-    n_contexts: int = Field(5, description="Number of top contexts for generation")
+    query: str
+    mode: str = "rag"            # retrieve | rerank | rag
+    retriever: str = "bm25"
+    rerankerCategory: str = "flashrank"
+    rerankerModel: str = "ms-marco-MiniLM-L-12-v2"
+    generator: str = "azure"     # azure | openai | claude | llama-3 | fid | zero-shot
+    ragMethod: str = "auto"      # auto | basic-rag | chain-of-thought-rag | self-consistency-rag
+    dataSource: str = "wiki"
+    n_docs: int = 10
+    n_contexts: int = 5
 
 
-class DocumentOut(BaseModel):
+class DocOut(BaseModel):
     id: str
     text: str
     title: Optional[str] = None
@@ -96,35 +134,28 @@ class DocumentOut(BaseModel):
 class PipelineResponse(BaseModel):
     query: str
     mode: str
-    retrieved_docs: List[DocumentOut] = []
-    reranked_docs:  List[DocumentOut] = []
+    retrieved_docs: List[DocOut] = []
+    reranked_docs:  List[DocOut] = []
     answer: Optional[str] = None
     retriever_latency_ms: float = 0
     reranker_latency_ms:  float = 0
     generator_latency_ms: float = 0
+    rag_method: Optional[str] = None
     error: Optional[str] = None
 
 
-# ─── FastAPI App ───────────────────────────────────────────────────────────────
-app = FastAPI(
-    title="Rankify Demo API",
-    description="Dynamic retrieval/reranking/RAG API for the Rankify demo UI",
-    version="2.0.0",
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# ─── App ───────────────────────────────────────────────────────────────────────
+app = FastAPI(title="Rankify Demo API v2", version="2.0.0")
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True,
+                   allow_methods=["*"], allow_headers=["*"])
 
 
 @app.get("/health")
 async def health():
     return {
         "status": "healthy",
+        "azure_configured": bool(AZURE_KEY),
+        "azure_deployment": AZURE_DEPLOYMENT,
         "cached_retrievers": list(_retriever_cache.keys()),
         "cached_rerankers":  list(_reranker_cache.keys()),
         "cached_generators": list(_generator_cache.keys()),
@@ -133,112 +164,108 @@ async def health():
 
 @app.get("/models")
 async def list_models():
-    """Return all supported models (mirrors models.ts on the frontend)."""
     return {
         "retrievers": ["bm25", "dpr", "ance", "contriever", "colbert", "bge"],
-        "reranker_categories": {
-            "flashrank": ["ms-marco-TinyBERT-L-2-v2", "ms-marco-MiniLM-L-12-v2",
-                          "ms-marco-MultiBERT-L-12", "rank-T5-flan", "ce-esci-MiniLM-L12-v2"],
-            "transformer_ranker": ["bge-reranker-base", "bge-reranker-large",
-                                   "bge-reranker-v2-m3", "mxbai-rerank-base", "mxbai-rerank-large",
-                                   "ms-marco-MiniLM-L-6-v2", "ms-marco-MiniLM-L-12-v2"],
-            "monot5": ["monot5-base-msmarco", "monot5-large-msmarco", "monot5-base-msmarco-10k"],
-            "colbert_ranker": ["colbertv2.0", "jina-colbert-v1-en"],
-            "monobert": ["monobert-large"],
-        },
-        "generators": ["openai", "claude", "llama-3", "mistral", "litellm"],
+        "generators": ["azure", "azure-cot", "azure-self-consistency", "openai", "claude", "llama-3", "mistral", "fid", "zero-shot"],
+        "rag_methods": ["basic-rag", "chain-of-thought-rag", "self-consistency-rag", "zero-shot", "fid"],
     }
+
+
+def _run_retrieve(req: PipelineRequest, from_rankify):
+    """Run retrieval and return (retrieved_docs, latency_ms)."""
+    Document, Question, Answer = from_rankify
+    t0 = time.time()
+    idx = "msmarco" if req.dataSource == "msmarco" else "wiki"
+    retriever = get_retriever(req.retriever, n_docs=req.n_docs, index_type=idx)
+    doc = Document(question=Question(req.query), answers=Answer([]), contexts=[])
+    results = retriever.retrieve([doc])
+    retrieved = results[0].contexts[:req.n_docs]
+    latency = round((time.time() - t0) * 1000, 1)
+    out = [
+        DocOut(
+            id=str(ctx.id or i),
+            text=str(ctx.text or "")[:800],
+            title=str(ctx.title) if hasattr(ctx, "title") and ctx.title else None,
+            score=float(ctx.score) if hasattr(ctx, "score") and ctx.score is not None else None,
+        )
+        for i, ctx in enumerate(retrieved)
+    ]
+    return retrieved, out, latency
+
+
+def _run_rerank(req: PipelineRequest, retrieved, from_rankify):
+    """Run reranking and return (reranked_contexts, docs_out, latency_ms)."""
+    Document, Question, Answer, Context = from_rankify
+    if not retrieved:
+        return [], [], 0.0
+    t0 = time.time()
+    reranker = get_reranker(req.rerankerCategory, req.rerankerModel)
+    if reranker is None:
+        return retrieved[:req.n_contexts], [], 0.0
+    doc2 = Document(
+        question=Question(req.query),
+        answers=Answer([]),
+        contexts=[Context(text=ctx.text, id=str(ctx.id or i),
+                          title=ctx.title if hasattr(ctx, "title") else "")
+                  for i, ctx in enumerate(retrieved)],
+    )
+    res = reranker.rank([doc2])
+    reranked = (res[0].reorder_contexts or res[0].contexts)[:req.n_contexts]
+    latency = round((time.time() - t0) * 1000, 1)
+    out = [
+        DocOut(
+            id=str(ctx.id or i),
+            text=str(ctx.text or "")[:800],
+            title=str(ctx.title) if hasattr(ctx, "title") and ctx.title else None,
+            score=float(ctx.score) if hasattr(ctx, "score") and ctx.score is not None else None,
+        )
+        for i, ctx in enumerate(reranked)
+    ]
+    return reranked, out, latency
 
 
 @app.post("/pipeline", response_model=PipelineResponse)
 async def pipeline(req: PipelineRequest):
-    """
-    Run the full Rankify pipeline based on the requested mode.
-    Every parameter (retriever, reranker, generator) is chosen per-request.
-    """
     from rankify.dataset.dataset import Document, Question, Answer, Context
-
     resp = PipelineResponse(query=req.query, mode=req.mode)
-    index_type = "msmarco" if req.dataSource == "msmarco" else "wiki"
 
     try:
-        # ── Step 1: Retrieval ──────────────────────────────────────────────────
-        t0 = time.time()
-        retriever = get_retriever(req.retriever, n_docs=req.n_docs, index_type=index_type)
-        doc = Document(question=Question(req.query), answers=Answer([]), contexts=[])
-        results = retriever.retrieve([doc])
-        retrieved = results[0].contexts[:req.n_docs]
-        resp.retriever_latency_ms = round((time.time() - t0) * 1000, 1)
-
-        resp.retrieved_docs = [
-            DocumentOut(
-                id=str(ctx.id or i),
-                text=str(ctx.text or "")[:600],
-                title=str(ctx.title) if hasattr(ctx, "title") and ctx.title else None,
-                score=float(ctx.score) if hasattr(ctx, "score") and ctx.score is not None else None,
-            )
-            for i, ctx in enumerate(retrieved)
-        ]
+        # 1. Retrieve
+        retrieved, resp.retrieved_docs, resp.retriever_latency_ms = \
+            _run_retrieve(req, (Document, Question, Answer))
 
         if req.mode == "retrieve":
             return resp
 
-        # ── Step 2: Reranking ──────────────────────────────────────────────────
-        t1 = time.time()
-        reranker = get_reranker(req.rerankerCategory, req.rerankerModel)
-
-        doc2 = Document(
-            question=Question(req.query),
-            answers=Answer([]),
-            contexts=[Context(text=ctx.text, id=str(ctx.id or i),
-                              title=ctx.title if hasattr(ctx, "title") else "")
-                      for i, ctx in enumerate(retrieved)],
-        )
-        reranked_results = reranker.rank([doc2])
-        reranked = (reranked_results[0].reorder_contexts or reranked_results[0].contexts)[:req.n_contexts]
-        resp.reranker_latency_ms = round((time.time() - t1) * 1000, 1)
-
-        resp.reranked_docs = [
-            DocumentOut(
-                id=str(ctx.id or i),
-                text=str(ctx.text or "")[:600],
-                title=str(ctx.title) if hasattr(ctx, "title") and ctx.title else None,
-                score=float(ctx.score) if hasattr(ctx, "score") and ctx.score is not None else None,
-            )
-            for i, ctx in enumerate(reranked)
-        ]
+        # 2. Rerank
+        reranked, resp.reranked_docs, resp.reranker_latency_ms = \
+            _run_rerank(req, retrieved, (Document, Question, Answer, Context))
 
         if req.mode == "rerank":
             return resp
 
-        # ── Step 3: Generation ────────────────────────────────────────────────
+        # 3. Generate
         t2 = time.time()
-
-        # Map UI generator value → Rankify generator method + backend
-        GENERATOR_MAP = {
-            "openai":   ("basic-rag", "gpt-4o-mini",        "openai"),
-            "claude":   ("basic-rag", "claude-3-5-sonnet",   "anthropic"),
-            "llama-3":  ("basic-rag", "meta-llama/Meta-Llama-3.1-8B-Instruct", "vllm"),
-            "mistral":  ("basic-rag", "mistralai/Mistral-7B-Instruct-v0.3",    "vllm"),
-            "litellm":  ("basic-rag", "gpt-4o-mini",        "litellm"),
-        }
-        method, model_name, backend = GENERATOR_MAP.get(req.generator, ("basic-rag", "gpt-4o-mini", "openai"))
+        gen_cfg = _resolve_generator_config(req.generator, req.ragMethod)
+        rag_method = gen_cfg.pop("rag_method")
+        backend    = gen_cfg.pop("backend")
+        model_name = gen_cfg.pop("model_name")
 
         gen_doc = Document(
             question=Question(req.query),
             answers=Answer([]),
             contexts=[Context(text=ctx.text, id=str(ctx.id or i),
                               title=ctx.title if hasattr(ctx, "title") else "")
-                      for i, ctx in enumerate(reranked)],
+                      for i, ctx in enumerate(reranked or retrieved[:req.n_contexts])],
         )
-
-        generator = get_generator(method=method, model_name=model_name, backend=backend)
+        generator = get_generator(rag_method, model_name, backend, **gen_cfg)
         answers = generator.generate([gen_doc])
         resp.answer = answers[0] if answers else "No answer generated."
         resp.generator_latency_ms = round((time.time() - t2) * 1000, 1)
+        resp.rag_method = rag_method
 
     except Exception as e:
-        logger.error(f"Pipeline error: {traceback.format_exc()}")
+        logger.error(traceback.format_exc())
         resp.error = str(e)
 
     return resp
@@ -246,113 +273,66 @@ async def pipeline(req: PipelineRequest):
 
 @app.post("/pipeline/stream")
 async def pipeline_stream(req: PipelineRequest):
-    """
-    Same as /pipeline but streams the answer token-by-token using SSE.
-    Used by the 'rag' mode for real-time generation display.
-    """
-    async def generate():
+    """SSE streaming endpoint for real-time RAG responses."""
+    async def gen():
         import asyncio
-        # First run the non-streaming pipeline to get docs
         from rankify.dataset.dataset import Document, Question, Answer, Context
 
-        index_type = "msmarco" if req.dataSource == "msmarco" else "wiki"
-
         try:
-            # Retrieval
-            retriever = get_retriever(req.retriever, n_docs=req.n_docs, index_type=index_type)
-            doc = Document(question=Question(req.query), answers=Answer([]), contexts=[])
-            results = retriever.retrieve([doc])
-            retrieved = results[0].contexts[:req.n_docs]
-
-            retrieved_payload = json.dumps({
-                "type": "retrieved",
-                "docs": [
-                    {"id": str(ctx.id or i), "text": str(ctx.text or "")[:600],
-                     "score": float(ctx.score) if hasattr(ctx, "score") and ctx.score is not None else 0.0}
-                    for i, ctx in enumerate(retrieved)
-                ]
-            })
-            yield f"data: {retrieved_payload}\n\n"
+            # Retrieve
+            retrieved, retrieved_out, r_lat = _run_retrieve(req, (Document, Question, Answer))
+            yield f"data: {json.dumps({'type':'retrieved','docs':[d.model_dump() for d in retrieved_out],'latency_ms':r_lat})}\n\n"
 
             if req.mode == "retrieve":
-                yield "data: {\"type\":\"done\"}\n\n"
-                return
+                yield 'data: {"type":"done"}\n\n'; return
 
-            # Reranking
-            reranker = get_reranker(req.rerankerCategory, req.rerankerModel)
-            doc2 = Document(
-                question=Question(req.query),
-                answers=Answer([]),
-                contexts=[Context(text=ctx.text, id=str(ctx.id or i),
-                                  title=ctx.title if hasattr(ctx, "title") else "")
-                          for i, ctx in enumerate(retrieved)],
-            )
-            reranked_results = reranker.rank([doc2])
-            reranked = (reranked_results[0].reorder_contexts or reranked_results[0].contexts)[:req.n_contexts]
-
-            reranked_payload = json.dumps({
-                "type": "reranked",
-                "docs": [
-                    {"id": str(ctx.id or i), "text": str(ctx.text or "")[:600],
-                     "score": float(ctx.score) if hasattr(ctx, "score") and ctx.score is not None else 0.0}
-                    for i, ctx in enumerate(reranked)
-                ]
-            })
-            yield f"data: {reranked_payload}\n\n"
+            # Rerank
+            reranked, reranked_out, rr_lat = _run_rerank(req, retrieved, (Document, Question, Answer, Context))
+            yield f"data: {json.dumps({'type':'reranked','docs':[d.model_dump() for d in reranked_out],'latency_ms':rr_lat})}\n\n"
 
             if req.mode == "rerank":
-                yield "data: {\"type\":\"done\"}\n\n"
-                return
+                yield 'data: {"type":"done"}\n\n'; return
 
-            # Generation
-            GENERATOR_MAP = {
-                "openai":  ("basic-rag", "gpt-4o-mini", "openai"),
-                "claude":  ("basic-rag", "claude-3-5-sonnet", "anthropic"),
-                "llama-3": ("basic-rag", "meta-llama/Meta-Llama-3.1-8B-Instruct", "vllm"),
-                "mistral": ("basic-rag", "mistralai/Mistral-7B-Instruct-v0.3", "vllm"),
-                "litellm": ("basic-rag", "gpt-4o-mini", "litellm"),
-            }
-            method, model_name, backend = GENERATOR_MAP.get(req.generator, ("basic-rag", "gpt-4o-mini", "openai"))
+            # Generate
+            gen_cfg = _resolve_generator_config(req.generator, req.ragMethod)
+            rag_method = gen_cfg.pop("rag_method")
+            backend    = gen_cfg.pop("backend")
+            model_name = gen_cfg.pop("model_name")
 
             gen_doc = Document(
                 question=Question(req.query),
                 answers=Answer([]),
                 contexts=[Context(text=ctx.text, id=str(ctx.id or i),
                                   title=ctx.title if hasattr(ctx, "title") else "")
-                          for i, ctx in enumerate(reranked)],
+                          for i, ctx in enumerate(reranked or retrieved[:req.n_contexts])],
             )
-
-            generator = get_generator(method=method, model_name=model_name, backend=backend)
+            generator = get_generator(rag_method, model_name, backend, **gen_cfg)
             answers = generator.generate([gen_doc])
             answer = answers[0] if answers else "No answer generated."
 
-            # Stream the answer word by word
+            # Stream tokens
             words = answer.split()
             for i, word in enumerate(words):
-                token_payload = json.dumps({"type": "token", "content": word + (" " if i < len(words) - 1 else "")})
-                yield f"data: {token_payload}\n\n"
-                await asyncio.sleep(0.02)
+                token = word + (" " if i < len(words) - 1 else "")
+                yield f"data: {json.dumps({'type':'token','content':token,'method':rag_method})}\n\n"
+                await asyncio.sleep(0.015)
 
-            yield "data: {\"type\":\"done\"}\n\n"
+            yield 'data: {"type":"done"}\n\n'
 
         except Exception as e:
-            err_payload = json.dumps({"type": "error", "message": str(e)})
-            yield f"data: {err_payload}\n\n"
+            logger.error(traceback.format_exc())
+            yield f"data: {json.dumps({'type':'error','message':str(e)})}\n\n"
 
-    return StreamingResponse(
-        generate(),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
+    return StreamingResponse(gen(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Rankify Demo Server")
+    parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--reload", action="store_true")
     args = parser.parse_args()
-
-    logger.info(f"Starting Rankify Demo Server on http://{args.host}:{args.port}")
-    logger.info("Docs available at /docs")
+    logger.info(f"Starting on http://{args.host}:{args.port}")
+    logger.info(f"Azure: {'configured ✓' if AZURE_KEY else 'NOT configured'} ({AZURE_DEPLOYMENT})")
     uvicorn.run("demo_server:app", host=args.host, port=args.port, reload=args.reload)
