@@ -80,34 +80,77 @@ def get_generator(rag_method: str, model_name: str, backend: str, **kwargs):
 
 
 def _resolve_generator_config(generator_id: str, rag_method_id: str) -> dict:
-    """Map UI generator + RAG method IDs to Rankify Generator params."""
+    """Map UI generator + RAG method IDs to Rankify Generator params.
+
+    Rankify's model_factory (openai backend) expects:
+      - api_keys: list of API key strings
+      - (optional) base_url passed to OpenAIModel → OpenaiClient
+
+    For Azure OpenAI the openai SDK supports:
+      - AzureOpenAI(azure_endpoint=..., api_key=..., api_version=...)
+    We pass the Azure endpoint as base_url in the format that the openai
+    SDK accepts when using standard OpenAI() with a custom base_url:
+        https://<resource>.openai.azure.com/openai/deployments/<deployment>
+    And set api_version via default_query.
+    """
+    # Azure base_url: route to the specific deployment
+    azure_base = None
+    if AZURE_ENDPOINT and AZURE_DEPLOYMENT:
+        azure_base = f"{AZURE_ENDPOINT.rstrip('/')}/openai/deployments/{AZURE_DEPLOYMENT}"
+
     configs = {
-        # Azure OpenAI (default)
         "azure": dict(
-            rag_method="basic-rag", backend="openai", model_name=AZURE_DEPLOYMENT,
-            api_key=AZURE_KEY, azure_endpoint=AZURE_ENDPOINT, api_version=AZURE_API_VER,
+            rag_method="basic-rag", backend="openai",
+            model_name=AZURE_DEPLOYMENT,
+            api_keys=[AZURE_KEY],
+            base_url=azure_base,
         ),
         "azure-cot": dict(
-            rag_method="chain-of-thought-rag", backend="openai", model_name=AZURE_DEPLOYMENT,
-            api_key=AZURE_KEY, azure_endpoint=AZURE_ENDPOINT, api_version=AZURE_API_VER,
+            rag_method="chain-of-thought-rag", backend="openai",
+            model_name=AZURE_DEPLOYMENT,
+            api_keys=[AZURE_KEY],
+            base_url=azure_base,
         ),
         "azure-self-consistency": dict(
-            rag_method="self-consistency-rag", backend="openai", model_name=AZURE_DEPLOYMENT,
-            api_key=AZURE_KEY, azure_endpoint=AZURE_ENDPOINT, api_version=AZURE_API_VER,
+            rag_method="self-consistency-rag", backend="openai",
+            model_name=AZURE_DEPLOYMENT,
+            api_keys=[AZURE_KEY],
+            base_url=azure_base,
         ),
-        "openai": dict(rag_method="basic-rag", backend="openai", model_name="gpt-4o-mini"),
-        "claude":  dict(rag_method="basic-rag", backend="anthropic", model_name="claude-3-5-sonnet-20240620"),
-        "llama-3": dict(rag_method="basic-rag", backend="vllm", model_name="meta-llama/Meta-Llama-3.1-8B-Instruct"),
-        "mistral": dict(rag_method="basic-rag", backend="vllm", model_name="mistralai/Mistral-7B-Instruct-v0.3"),
-        "fid":     dict(rag_method="fid", backend="fid", model_name="nq_reader_base"),
-        "zero-shot": dict(rag_method="zero-shot", backend="openai", model_name=AZURE_DEPLOYMENT,
-                         api_key=AZURE_KEY, azure_endpoint=AZURE_ENDPOINT, api_version=AZURE_API_VER),
+        "openai": dict(
+            rag_method="basic-rag", backend="openai",
+            model_name="gpt-4o-mini",
+            api_keys=[os.getenv("OPENAI_API_KEY", "")],
+        ),
+        "claude": dict(
+            rag_method="basic-rag", backend="anthropic",
+            model_name="claude-3-5-sonnet-20240620",
+        ),
+        "llama-3": dict(
+            rag_method="basic-rag", backend="vllm",
+            model_name="meta-llama/Meta-Llama-3.1-8B-Instruct",
+        ),
+        "mistral": dict(
+            rag_method="basic-rag", backend="vllm",
+            model_name="mistralai/Mistral-7B-Instruct-v0.3",
+        ),
+        "fid": dict(
+            rag_method="fid", backend="fid",
+            model_name="nq_reader_base",
+        ),
+        "zero-shot": dict(
+            rag_method="zero-shot", backend="openai",
+            model_name=AZURE_DEPLOYMENT,
+            api_keys=[AZURE_KEY],
+            base_url=azure_base,
+        ),
     }
     base = configs.get(generator_id, configs["azure"]).copy()
-    # Allow RAG method override from UI
-    if rag_method_id and rag_method_id != "auto":
+    # Allow RAG method override from UI (e.g. chain-of-thought on non-Azure model)
+    if rag_method_id and rag_method_id not in ("auto", ""):
         base["rag_method"] = rag_method_id
     return base
+
 
 
 # ─── Models ────────────────────────────────────────────────────────────────────
