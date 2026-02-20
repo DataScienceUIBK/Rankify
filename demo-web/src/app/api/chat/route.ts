@@ -38,8 +38,6 @@ export async function POST(req: Request) {
         rerankerModel,
         generator,
         dataSource: dataSource === 'wiki' ? 'wiki' : 'msmarco',
-        n_docs: 10,
-        n_contexts: 5,
     };
 
     // ── Check if Python server is reachable ──────────────────────────────────────
