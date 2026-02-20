@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { useChat } from "ai/react";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "../components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { ScrollArea } from "../components/ui/scroll-area";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../components/ui/accordion";
+import { Badge } from "../components/ui/badge";
 import { Database, Search, ListTree, Bot, Send, BrainCircuit, Upload, Sparkles } from "lucide-react";
 
 export default function ChatPage() {
@@ -155,8 +155,8 @@ export default function ChatPage() {
 
                   {/* Message Text bubble */}
                   <div className={`px-5 py-3.5 text-[15px] shadow-sm leading-relaxed ${m.role === 'user'
-                      ? 'bg-slate-900 text-white rounded-2xl rounded-br-sm'
-                      : 'bg-white border border-slate-200 text-slate-800 rounded-2xl rounded-bl-sm prose prose-sm max-w-none'
+                    ? 'bg-slate-900 text-white rounded-2xl rounded-br-sm'
+                    : 'bg-white border border-slate-200 text-slate-800 rounded-2xl rounded-bl-sm prose prose-sm max-w-none'
                     }`}>
                     {m.content}
                   </div>
