@@ -6,12 +6,11 @@ docs_dir: "docs/"
 repo_url: https://github.com/DataScienceUIBK/Rankify
 repo_name: DataScienceUIBK/Rankify
 
-
-
 nav:
   - Home: index.md
   - Installation: installation.md
   - Getting Started: getting-started.md
+  - Troubleshooting RAG & Reranking: troubleshooting_rag_and_reranking.md
   - Contribution: contribution.md
   - References:
       - API Reference: api/index.md
@@ -130,7 +129,6 @@ nav:
           - Integrations: tutorials/pipeline/integrations.md
           - Web Playground: tutorials/pipeline/playground.md
 
-
 theme:
     name: material
     custom_dir: overrides
@@ -194,9 +192,6 @@ extra:
     cards: false
     footer: "Made with [Material for MkDocs](https://squidfunk.github.io/mkdocs-material/) | Template taken from [DSPy](https://github.com/stanfordnlp/dspy)"
 
-
-
-
 markdown_extensions:
     - pymdownx.tabbed:
         alternate_style: true
@@ -216,4 +211,3 @@ markdown_extensions:
     - pymdownx.emoji:
         emoji_index: !!python/name:material.extensions.emoji.twemoji
         emoji_generator: !!python/name:materialx.emoji.to_svg
-
