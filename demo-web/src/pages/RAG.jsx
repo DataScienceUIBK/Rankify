@@ -22,7 +22,7 @@ export function RAG() {
         setQuery('');
         setIsGenerating(true);
 
-        // Simulate RAG pipeline latency (Retrieval -> Reranking -> Generation)
+        // Simulate RAG pipeline latency
         setTimeout(() => {
             setMessages(prev => [
                 ...prev,

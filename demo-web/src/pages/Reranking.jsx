@@ -17,15 +17,29 @@ export function Reranking() {
     const [isReranking, setIsReranking] = useState(false);
     const [isDone, setIsDone] = useState(false);
 
-    const handleRerank = () => {
+    const handleRerank = async () => {
         setIsReranking(true);
-        // Simulate reranking delay
-        setTimeout(() => {
+        try {
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            const response = await fetch(`${API_URL}/rerank`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: "example text", docs: docs })
+            });
+            const data = await response.json();
+            if (data.results) {
+                setDocs(data.results);
+            }
+            setIsDone(true);
+        } catch (err) {
+            console.error("Failed to connect to Rankify live API server, using mock sort.", err);
+            // Fallback
             const sortedDocs = [...docs].sort((a, b) => b.score - a.score);
             setDocs(sortedDocs);
-            setIsReranking(false);
             setIsDone(true);
-        }, 2000);
+        } finally {
+            setIsReranking(false);
+        }
     };
 
     const handleReset = () => {

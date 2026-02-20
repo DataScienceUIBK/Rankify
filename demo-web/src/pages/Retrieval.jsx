@@ -16,16 +16,34 @@ export function Retrieval() {
     const [loading, setLoading] = useState(false);
     const [results, setResults] = useState(null);
 
-    const handleSearch = (e) => {
+    const handleSearch = async (e) => {
         e.preventDefault();
         if (!query.trim()) return;
 
         setLoading(true);
-        // Simulate API call
-        setTimeout(() => {
+        setResults(null);
+        try {
+            // Connect to the actual Python Rankify Server. By default it runs on 8000 but can be configured in the UI or environment
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+            const response = await fetch(`${API_URL}/retrieve`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: query, n_docs: 4 })
+            });
+            const data = await response.json();
+            if (data.results) {
+                setResults(data.results);
+            } else {
+                console.warn("Unexpected API Response format", data);
+                setResults(mockResults);
+            }
+        } catch (err) {
+            console.error("Failed to connect to actual Rankify Server, using mock data.", err);
+            // Fallback to visual demo if server is unreachable
             setResults(mockResults);
+        } finally {
             setLoading(false);
-        }, 1500);
+        }
     };
 
     return (
