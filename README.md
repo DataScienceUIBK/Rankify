@@ -1004,7 +1004,6 @@ for item in queries:
                    question=Question(question=item["query"]), 
                    answers=Answer(answers=item.get("gold_ids", [])))
     documents.append(doc)
-    break
     
 retriever = Retriever(
     method="reasonir",            # Use ReasonIR retriever
