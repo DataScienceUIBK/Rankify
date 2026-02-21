@@ -7,7 +7,7 @@ import {
     Send, Search, ListTree, Bot, Database, Upload,
     Sparkles, FileText, X, ChevronDown, ChevronUp,
     Layers, Loader2, ArrowRight, Plus, MessageSquare,
-    Trash2, BrainCircuit, ChevronRight, AlertCircle, CheckCircle2
+    Trash2, BrainCircuit, ChevronRight, AlertCircle, CheckCircle2, Code2
 } from "lucide-react";
 
 // ─── Inline Button ─────────────────────────────────────────────────────────────
@@ -80,11 +80,18 @@ const GENERATORS = [
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 type PipelineMode = "retrieve" | "rerank" | "rag";
-interface PDoc { id: string; text: string; title?: string; score?: number; }
+interface PDoc { id: string; text: string; title?: string; score?: number; rank_delta?: number; }
 interface ChatMsg {
     id: string; role: "user" | "assistant"; content: string;
     contentRetrieved?: string; contentReranked?: string;
-    pipelineData?: { retrievedDocs?: PDoc[]; rerankedDocs?: PDoc[]; ragMethod?: string; };
+    pipelineData?: {
+        retrievedDocs?: PDoc[];
+        rerankedDocs?: PDoc[];
+        ragMethod?: string;
+        retrieverLatencyMs?: number;
+        rerankerLatencyMs?: number;
+        generatorLatencyMs?: number;
+    };
 }
 interface Cfg {
     pipelineMode: PipelineMode; dataSource: string;
@@ -160,7 +167,17 @@ function Sel({ value, onChange, opts, w = "w-auto" }: { value: string; onChange:
 function DocCard({ doc, rank, isReranked }: { doc: PDoc; rank: number; isReranked?: boolean }) {
     return (
         <div className={`flex gap-2 p-2.5 rounded-lg border text-xs ${isReranked ? "bg-indigo-50/60 border-indigo-100" : "bg-slate-50 border-slate-100"}`}>
-            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${isReranked ? "bg-indigo-100 text-indigo-700" : "bg-slate-200 text-slate-600"}`}>{rank}</div>
+            <div className="flex flex-col items-center gap-1 shrink-0">
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isReranked ? "bg-indigo-100 text-indigo-700" : "bg-slate-200 text-slate-600"}`}>{rank}</div>
+                {isReranked && doc.rank_delta !== undefined && doc.rank_delta !== 0 && (
+                    <div className={`text-[9px] font-bold px-1 rounded ${doc.rank_delta > 0 ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
+                        {doc.rank_delta > 0 ? "▲" : "▼"} {Math.abs(doc.rank_delta)}
+                    </div>
+                )}
+                {isReranked && doc.rank_delta === 0 && (
+                    <div className="text-[9px] font-bold px-1 rounded bg-slate-200 text-slate-500">—</div>
+                )}
+            </div>
             <div className="flex-1 min-w-0">
                 {doc.title && <div className="font-semibold text-slate-700 truncate mb-0.5">{doc.title}</div>}
                 <p className="text-slate-600 line-clamp-3 leading-relaxed">{doc.text}</p>
@@ -217,13 +234,40 @@ function PipelineViz({ msg, cfg }: { msg: ChatMsg; cfg: Cfg }) {
 
             {cfg.pipelineMode === "rag" && <>
                 <div className="flex justify-center"><ArrowRight className="w-4 h-4 text-slate-200 rotate-90 md:rotate-0" /></div>
-                <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-violet-200 bg-violet-50/40">
-                    <span className="w-6 h-6 rounded-full bg-violet-100 flex items-center justify-center"><Bot className="w-3 h-3 text-violet-600" /></span>
-                    <span className="text-xs font-semibold text-slate-700">Generator</span>
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-50 text-violet-700 border border-violet-100">{genLabel}</span>
-                    {pd.ragMethod && <span className="text-[10px] text-slate-400">via {pd.ragMethod}</span>}
+                <div className="flex flex-col gap-2 rounded-xl border border-violet-200 bg-violet-50/40 p-2 px-3">
+                    <div className="flex items-center gap-2">
+                        <span className="w-6 h-6 rounded-full bg-violet-100 flex items-center justify-center"><Bot className="w-3 h-3 text-violet-600" /></span>
+                        <span className="text-xs font-semibold text-slate-700">Generator</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-violet-50 text-violet-700 border border-violet-100">{genLabel}</span>
+                        {pd.ragMethod && <span className="text-[10px] text-slate-400">via {pd.ragMethod}</span>}
+                    </div>
                 </div>
             </>}
+
+            {/* Performance Metrics Footer */}
+            {(pd.retrieverLatencyMs || pd.rerankerLatencyMs || pd.generatorLatencyMs) && (
+                <div className="flex flex-wrap items-center gap-2 mt-2 pt-2 border-t border-slate-100 text-[10px] font-medium text-slate-500">
+                    <span className="text-slate-400 uppercase tracking-wider text-[9px] font-bold">Latency:</span>
+                    {pd.retrieverLatencyMs !== undefined && (
+                        <div className={`px-1.5 py-0.5 rounded flex items-center gap-1 ${pd.retrieverLatencyMs < 500 ? "text-emerald-600 bg-emerald-50" : pd.retrieverLatencyMs < 2000 ? "text-amber-600 bg-amber-50" : "text-red-500 bg-red-50"}`}>
+                            <span>Retriever:</span>
+                            <span className="font-bold">{pd.retrieverLatencyMs}ms</span>
+                        </div>
+                    )}
+                    {pd.rerankerLatencyMs !== undefined && pd.rerankerLatencyMs > 0 && (
+                        <div className={`px-1.5 py-0.5 rounded flex items-center gap-1 ${pd.rerankerLatencyMs < 500 ? "text-emerald-600 bg-emerald-50" : pd.rerankerLatencyMs < 2000 ? "text-amber-600 bg-amber-50" : "text-red-500 bg-red-50"}`}>
+                            <span>Reranker:</span>
+                            <span className="font-bold">{pd.rerankerLatencyMs}ms</span>
+                        </div>
+                    )}
+                    {pd.generatorLatencyMs !== undefined && pd.generatorLatencyMs > 0 && (
+                        <div className={`px-1.5 py-0.5 rounded flex items-center gap-1 ${pd.generatorLatencyMs < 2000 ? "text-emerald-600 bg-emerald-50" : pd.generatorLatencyMs < 5000 ? "text-amber-600 bg-amber-50" : "text-red-500 bg-red-50"}`}>
+                            <span>Generator:</span>
+                            <span className="font-bold">{pd.generatorLatencyMs}ms</span>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
@@ -259,6 +303,56 @@ function NewPipelineModal({ onClose, onCreate }: {
                             </div>
                         </button>
                     ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function PythonExportModal({ cfg, onClose }: { cfg: Cfg, onClose: () => void }) {
+    let code = `from rankify import pipeline\n\n`;
+    code += `# Initialize the ${cfg.pipelineMode.toUpperCase()} pipeline\n`;
+    code += `pipe = pipeline(\n`;
+    code += `    "${cfg.pipelineMode}",\n`;
+    code += `    retriever="${cfg.retriever}",\n`;
+    if (cfg.pipelineMode !== "retrieve") {
+        code += `    reranker="${cfg.rerankerCategory}",\n`;
+        // We use category as the high level, exact model is chosen by category default usually
+    }
+    if (cfg.pipelineMode === "rag") {
+        code += `    generator="${cfg.generator}"\n`;
+    }
+    code += `)\n\n`;
+    code += `# Run the pipeline on your query and documents\n`;
+    if (cfg.pipelineMode === "rag") {
+        code += `answers = pipe("What is machine learning?", documents)\n`;
+        code += `print(answers[0])\n`;
+    } else {
+        code += `results = pipe("What is machine learning?", documents)\n`;
+        code += `print(results)\n`;
+    }
+
+    return (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col">
+                <div className="flex items-center justify-between p-4 border-b">
+                    <div className="font-semibold text-slate-800 flex items-center gap-2">
+                        <Code2 className="w-5 h-5 text-indigo-500" />
+                        Export Pipeline to Python
+                    </div>
+                    <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded text-slate-400"><X className="w-5 h-5" /></button>
+                </div>
+                <div className="p-4 bg-slate-50 text-sm text-slate-600 border-b border-slate-100">
+                    Use this snippet to recreate the exact <b>{cfg.pipelineMode.toUpperCase()}</b> pipeline you just built in your own Python codebase with the Rankify SDK.
+                </div>
+                <div className="p-4 bg-[#0d1117] text-slate-300 font-mono text-xs overflow-x-auto">
+                    <pre><code>{code}</code></pre>
+                </div>
+                <div className="p-4 border-t border-slate-100 flex justify-end">
+                    <button onClick={() => { navigator.clipboard.writeText(code); onClose(); }}
+                        className="px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg shadow-sm hover:bg-indigo-700 transition">
+                        Copy Code
+                    </button>
                 </div>
             </div>
         </div>
@@ -319,6 +413,7 @@ export default function ChatPage() {
     const [file, setFile] = useState<File | null>(null);
     const [serverOk, setServerOk] = useState<boolean | null>(null);
     const [showModal, setShowModal] = useState(false);
+    const [showCodeModal, setShowCodeModal] = useState(false);
     const bottomRef = useRef<HTMLDivElement>(null);
     const fileRef = useRef<HTMLInputElement>(null);
     // ↓ refs to avoid stale closures in async callbacks
@@ -446,6 +541,11 @@ export default function ChatPage() {
                 />
             )}
 
+            {/* Python Export Modal */}
+            {showCodeModal && (
+                <PythonExportModal cfg={cfg} onClose={() => setShowCodeModal(false)} />
+            )}
+
             {/* Sidebar */}
             <aside className="w-[240px] shrink-0 hidden md:block">
                 <SidebarPanel
@@ -472,6 +572,10 @@ export default function ChatPage() {
                             <button onClick={() => setShowModal(true)}
                                 className="px-2.5 py-1.5 text-xs text-slate-400 hover:text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">
                                 Switch mode
+                            </button>
+                            <button onClick={() => setShowCodeModal(true)}
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-indigo-600 hover:text-indigo-700 border border-indigo-200 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">
+                                <Code2 className="w-3.5 h-3.5" /> Export Code
                             </button>
                         </div>
                         <div className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border ${serverOk === true ? "border-emerald-200 bg-emerald-50 text-emerald-700" :
