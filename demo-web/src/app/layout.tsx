@@ -22,7 +22,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </Link>
           <div className="flex items-center gap-1 ml-4">
             <NavLink href="/" label="Home" />
-            <NavLink href="/chat" label="Try Demo" highlight />
+            <NavLink href="/chat" label="Demo Console" highlight />
+            <NavLink href="/arena" label="Model Arena" />
+            <NavLink href="/agent" label="Rankify Agent" />
             <NavLink href="/performance" label="Benchmarks" />
           </div>
           <div className="ml-auto flex items-center gap-3">
