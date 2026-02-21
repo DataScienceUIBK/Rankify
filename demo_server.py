@@ -451,12 +451,13 @@ async def agent_chat_stream(req: AgentRequest):
             # Synchronous call under the hood
             resp = agent.chat(req.message)
             
-            # Stream the message word by word for a nice effect
-            words = resp.message.split()
-            for i, w in enumerate(words):
-                token = w + (" " if i < len(words) - 1 else "")
+            # Stream the message chunk by chunk to preserve newlines
+            import re
+            tokens = re.split(r'(\s+)', resp.message)
+            for token in tokens:
+                if not token: continue
                 yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
-                await asyncio.sleep(0.02)
+                await asyncio.sleep(0.015)
                 
             # Stream the recommendation / code snippet at the end if it exists
             if resp.recommendation or resp.code_snippet:
