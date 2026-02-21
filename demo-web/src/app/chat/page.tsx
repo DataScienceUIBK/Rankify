@@ -344,10 +344,6 @@ export default function ChatPage() {
         check(); const t = setInterval(check, 30000); return () => clearInterval(t);
     }, []);
 
-    // Read active session from ref (not stale closure)
-    const getActive = () => stateRef.current.sessions.find(s => s.id === stateRef.current.activeId);
-    const cfg = getActive()?.config ?? defCfg();
-
     const handleCfg = useCallback((c: Partial<Cfg>) => {
         dispatch({ type: "CFG", id: stateRef.current.activeId, c });
     }, []);
@@ -358,8 +354,9 @@ export default function ChatPage() {
 
         // Read fresh state from ref
         const activeId = stateRef.current.activeId;
-        const activeCfg = getActive()?.config ?? defCfg();
-        const prevMsgs = getActive()?.messages ?? [];
+        const activeSession = stateRef.current.sessions.find(s => s.id === activeId);
+        const activeCfg = activeSession?.config ?? defCfg();
+        const prevMsgs = activeSession?.messages ?? [];
 
         const userMsg: ChatMsg = { id: gid(), role: "user", content: input.trim() };
         dispatch({ type: "MSG", id: activeId, m: userMsg });
@@ -429,7 +426,10 @@ export default function ChatPage() {
 
     if (!hydrated) return <div className="flex h-screen items-center justify-center"><Loader2 className="w-6 h-6 animate-spin text-indigo-500" /></div>;
 
-    const messages = getActive()?.messages ?? [];
+    // Use current render state for UI
+    const activeSession = state.sessions.find(s => s.id === state.activeId);
+    const messages = activeSession?.messages ?? [];
+    const cfg = activeSession?.config ?? defCfg();
     const selCat = RERANKER_CATEGORIES.find(c => c.value === cfg.rerankerCategory);
     const modeLabels: Record<PipelineMode, string> = { retrieve: "🔍 Retrieve", rerank: "🔀 Retrieve + Rerank", rag: "✨ Full RAG" };
 
@@ -440,7 +440,7 @@ export default function ChatPage() {
                 <NewPipelineModal
                     onClose={() => setShowModal(false)}
                     onCreate={(mode) => {
-                        const currentCfg = getActive()?.config ?? defCfg();
+                        const currentCfg = activeSession?.config ?? defCfg();
                         dispatch({ type: "CREATE", s: newSess({ ...currentCfg, pipelineMode: mode }) });
                     }}
                 />
