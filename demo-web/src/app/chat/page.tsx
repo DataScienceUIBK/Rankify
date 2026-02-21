@@ -372,12 +372,16 @@ export default function ChatPage() {
 
             const reader = res.body.getReader();
             const dec = new TextDecoder();
+            let buffer = "";
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
-                const chunk = dec.decode(value, { stream: true });
-                for (const line of chunk.split("\n")) {
+                buffer += dec.decode(value, { stream: true });
+                const lines = buffer.split("\n");
+                buffer = lines.pop() ?? "";
+
+                for (const line of lines) {
                     if (!line) continue;
                     if (line.startsWith("2:")) {
                         try {
