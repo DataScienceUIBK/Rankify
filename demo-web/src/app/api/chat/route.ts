@@ -47,7 +47,7 @@ export async function POST(req: Request) {
         rerankerModel,
         generator,
         dataSource: dataSource === 'wiki' ? 'wiki' : 'msmarco',
-        n_docs: 100,      // Always retrieve 100 candidates; reranker picks best n_contexts
+        n_docs: 10,      // Reverted to 10 as requested
         n_contexts: 10,
     };
 
