@@ -172,7 +172,7 @@ class DocOut(BaseModel):
     text: str
     title: Optional[str] = None
     score: Optional[float] = None
-
+    rank_delta: Optional[int] = None
 
 class PipelineResponse(BaseModel):
     query: str
@@ -245,6 +245,9 @@ def _run_rerank(req: PipelineRequest, retrieved, from_rankify):
     reranker = get_reranker(req.rerankerCategory, req.rerankerModel)
     if reranker is None:
         return retrieved[:req.n_contexts], [], 0.0
+    
+    retrieved_ids = [str(ctx.id or i) for i, ctx in enumerate(retrieved)]
+
     doc2 = Document(
         question=Question(req.query),
         answers=Answer([]),
@@ -255,15 +258,23 @@ def _run_rerank(req: PipelineRequest, retrieved, from_rankify):
     res = reranker.rank([doc2])
     reranked = (res[0].reorder_contexts or res[0].contexts)[:req.n_contexts]
     latency = round((time.time() - t0) * 1000, 1)
-    out = [
-        DocOut(
-            id=str(ctx.id or i),
+    
+    out = []
+    for i, ctx in enumerate(reranked):
+        ctx_id = str(ctx.id or i)
+        try:
+            old_rank = retrieved_ids.index(ctx_id)
+            delta = old_rank - i
+        except ValueError:
+            delta = 0
+            
+        out.append(DocOut(
+            id=ctx_id,
             text=str(ctx.text or "")[:800],
             title=str(ctx.title) if hasattr(ctx, "title") and ctx.title else None,
             score=float(ctx.score) if hasattr(ctx, "score") and ctx.score is not None else None,
-        )
-        for i, ctx in enumerate(reranked)
-    ]
+            rank_delta=delta
+        ))
     return reranked, out, latency
 
 
@@ -343,6 +354,7 @@ async def pipeline_stream(req: PipelineRequest):
             model_name = gen_cfg.pop("model_name")
 
             # Create generation payload for Retrived
+            t_gen_start = time.time()
             gen_doc_ret = Document(
                 question=Question(req.query),
                 answers=Answer([]),
@@ -370,6 +382,8 @@ async def pipeline_stream(req: PipelineRequest):
                 ans_ret = answers[0] if answers else "No answer generated."
                 ans_rr = ""
 
+            gen_latency_ms = round((time.time() - t_gen_start) * 1000, 1)
+
             # Stream tokens
             words_ret = ans_ret.split()
             words_rr = ans_rr.split()
@@ -384,6 +398,7 @@ async def pipeline_stream(req: PipelineRequest):
                     yield f"data: {json.dumps({'type':'token_reranked', 'content':token_rr, 'method':rag_method})}\n\n"
                 await asyncio.sleep(0.015)
 
+            yield f"data: {json.dumps({'type':'metrics', 'generator_latency_ms': gen_latency_ms})}\n\n"
             yield 'data: {"type":"done"}\n\n'
 
         except Exception as e:

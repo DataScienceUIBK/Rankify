@@ -90,6 +90,9 @@ async function handleStreamingPipeline(payload: Record<string, unknown>) {
                 let retrievedDocs: unknown[] = [];
                 let rerankedDocs: unknown[] = [];
                 let ragMethod: string | undefined;
+                let retrieverLatencyMs: number | undefined;
+                let rerankerLatencyMs: number | undefined;
+                let generatorLatencyMs: number | undefined;
 
                 let buffer = '';
 
@@ -99,7 +102,6 @@ async function handleStreamingPipeline(payload: Record<string, unknown>) {
 
                     buffer += dec.decode(value, { stream: true });
                     const lines = buffer.split('\n');
-                    // Keep last partial line in buffer
                     buffer = lines.pop() ?? '';
 
                     for (const line of lines) {
@@ -112,12 +114,19 @@ async function handleStreamingPipeline(payload: Record<string, unknown>) {
 
                         if (event.type === 'retrieved') {
                             retrievedDocs = event.docs as unknown[];
-                            const meta = JSON.stringify({ pipelineMeta: { retrievedDocs, rerankedDocs } });
+                            retrieverLatencyMs = event.latency_ms as number;
+                            const meta = JSON.stringify({ pipelineMeta: { retrievedDocs, rerankedDocs, ragMethod, retrieverLatencyMs, rerankerLatencyMs, generatorLatencyMs } });
                             enqueue(`2:${JSON.stringify([meta])}\n`);
 
                         } else if (event.type === 'reranked') {
                             rerankedDocs = event.docs as unknown[];
-                            const meta = JSON.stringify({ pipelineMeta: { retrievedDocs, rerankedDocs } });
+                            rerankerLatencyMs = event.latency_ms as number;
+                            const meta = JSON.stringify({ pipelineMeta: { retrievedDocs, rerankedDocs, ragMethod, retrieverLatencyMs, rerankerLatencyMs, generatorLatencyMs } });
+                            enqueue(`2:${JSON.stringify([meta])}\n`);
+
+                        } else if (event.type === 'metrics') {
+                            generatorLatencyMs = event.generator_latency_ms as number;
+                            const meta = JSON.stringify({ pipelineMeta: { retrievedDocs, rerankedDocs, ragMethod, retrieverLatencyMs, rerankerLatencyMs, generatorLatencyMs } });
                             enqueue(`2:${JSON.stringify([meta])}\n`);
 
                         } else if (event.type === 'token') {
@@ -137,12 +146,10 @@ async function handleStreamingPipeline(payload: Record<string, unknown>) {
 
                         } else if (event.type === 'error') {
                             const errMsg = String(event.message ?? 'Unknown server error');
-                            // Send final pipeline metadata (in case we have partial docs)
-                            const meta = JSON.stringify({ pipelineMeta: { retrievedDocs, rerankedDocs, ragMethod } });
+                            const meta = JSON.stringify({ pipelineMeta: { retrievedDocs, rerankedDocs, ragMethod, retrieverLatencyMs, rerankerLatencyMs, generatorLatencyMs } });
                             enqueue(`2:${JSON.stringify([meta])}\n`);
                             enqueue(`0:"\\n\\n⚠️ Error: ${escapeJson(errMsg)}"\n`);
                         }
-                        // 'done' event — just stop loop naturally
                     }
                 }
             } catch (err) {
