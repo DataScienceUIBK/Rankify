@@ -83,6 +83,7 @@ type PipelineMode = "retrieve" | "rerank" | "rag";
 interface PDoc { id: string; text: string; title?: string; score?: number; }
 interface ChatMsg {
     id: string; role: "user" | "assistant"; content: string;
+    contentRetrieved?: string; contentReranked?: string;
     pipelineData?: { retrievedDocs?: PDoc[]; rerankedDocs?: PDoc[]; ragMethod?: string; };
 }
 interface Cfg {
@@ -102,7 +103,7 @@ type SA =
     | { type: "DELETE"; id: string }
     | { type: "CFG"; id: string; c: Partial<Cfg> }
     | { type: "MSG"; id: string; m: ChatMsg }
-    | { type: "UPD"; id: string; content: string; pd?: ChatMsg["pipelineData"] };
+    | { type: "UPD"; id: string; content: string; contentRetrieved?: string; contentReranked?: string; pd?: ChatMsg["pipelineData"] };
 
 function reducer(state: { sessions: Session[]; activeId: string }, a: SA) {
     switch (a.type) {
@@ -127,7 +128,18 @@ function reducer(state: { sessions: Session[]; activeId: string }, a: SA) {
             ...state, sessions: state.sessions.map(s => {
                 if (s.id !== a.id) return s;
                 const msgs = [...s.messages];
-                for (let i = msgs.length - 1; i >= 0; i--) { if (msgs[i].role === "assistant") { msgs[i] = { ...msgs[i], content: a.content, pipelineData: a.pd ?? msgs[i].pipelineData }; break; } }
+                for (let i = msgs.length - 1; i >= 0; i--) {
+                    if (msgs[i].role === "assistant") {
+                        msgs[i] = {
+                            ...msgs[i],
+                            content: a.content,
+                            contentRetrieved: a.contentRetrieved ?? msgs[i].contentRetrieved,
+                            contentReranked: a.contentReranked ?? msgs[i].contentReranked,
+                            pipelineData: a.pd ?? msgs[i].pipelineData
+                        };
+                        break;
+                    }
+                }
                 return { ...s, messages: msgs };
             })
         };
@@ -358,6 +370,8 @@ export default function ChatPage() {
 
         let pd: ChatMsg["pipelineData"] = {};
         let answer = "";
+        let ansRet = "";
+        let ansRr = "";
 
         try {
             const res = await fetch("/api/chat", {
@@ -393,13 +407,21 @@ export default function ChatPage() {
                     }
                     if (line.startsWith("0:")) {
                         const match = line.slice(2).match(/^"([\s\S]*)"$/);
-                        if (match) { answer += match[1].replace(/\\n/g, "\n").replace(/\\"/g, '"'); dispatch({ type: "UPD", id: activeId, content: answer, pd }); }
+                        if (match) { answer += match[1].replace(/\\n/g, "\n").replace(/\\"/g, '"'); dispatch({ type: "UPD", id: activeId, content: answer, contentRetrieved: ansRet, contentReranked: ansRr, pd }); }
+                    }
+                    if (line.startsWith("3:")) {
+                        const match = line.slice(2).match(/^"([\s\S]*)"$/);
+                        if (match) { ansRet += match[1].replace(/\\n/g, "\n").replace(/\\"/g, '"'); dispatch({ type: "UPD", id: activeId, content: answer, contentRetrieved: ansRet, contentReranked: ansRr, pd }); }
+                    }
+                    if (line.startsWith("4:")) {
+                        const match = line.slice(2).match(/^"([\s\S]*)"$/);
+                        if (match) { ansRr += match[1].replace(/\\n/g, "\n").replace(/\\"/g, '"'); dispatch({ type: "UPD", id: activeId, content: answer, contentRetrieved: ansRet, contentReranked: ansRr, pd }); }
                     }
                 }
             }
         } catch (err) {
             answer = `⚠️ ${err instanceof Error ? err.message : String(err)}\n\nStart the server:\n\`python demo_server.py --port 8000\``;
-            dispatch({ type: "UPD", id: activeId, content: answer, pd });
+            dispatch({ type: "UPD", id: activeId, content: answer, contentRetrieved: ansRet, contentReranked: ansRr, pd });
         } finally {
             setLoading(false);
         }
@@ -550,9 +572,24 @@ export default function ChatPage() {
                                 {m.role !== "user" && <div className="w-7 h-7 shrink-0 rounded-lg bg-indigo-100 flex items-center justify-center mt-1"><Layers className="w-4 h-4 text-indigo-600" /></div>}
                                 <div className={`flex flex-col gap-2 ${m.role === "user" ? "items-end max-w-[75%]" : "items-start w-full"}`}>
                                     {m.role !== "user" && m.pipelineData && <div className="w-full"><PipelineViz msg={m} cfg={cfg} /></div>}
-                                    {(m.content || (loading && m.role === "assistant")) && (
-                                        <div className={`px-4 py-3 text-sm leading-relaxed rounded-2xl shadow-sm whitespace-pre-wrap ${m.role === "user" ? "bg-slate-900 text-white rounded-br-sm" : "bg-white border border-slate-200 text-slate-800 rounded-bl-sm"}`}>
-                                            {m.content || <span className="flex gap-1"><span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" /><span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:0.1s]" /><span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:0.2s]" /></span>}
+                                    {(m.content || (loading && m.role === "assistant") || m.contentRetrieved || m.contentReranked) && (
+                                        <div className="w-full">
+                                            {(m.contentRetrieved !== undefined || m.contentReranked !== undefined) ? (
+                                                <div className="flex flex-col md:flex-row gap-4 w-full">
+                                                    <div className="flex-1 bg-white border border-slate-200 text-slate-800 rounded-2xl p-4 text-sm leading-relaxed shadow-sm">
+                                                        <div className="font-bold text-xs text-emerald-700 mb-2 border-b border-emerald-100 pb-2 flex items-center gap-1.5"><Search className="w-3.5 h-3.5" /> Answer (Retrieved Docs)</div>
+                                                        <div className="whitespace-pre-wrap">{m.contentRetrieved || <span className="flex gap-1"><span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" /><span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:0.1s]" /><span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:0.2s]" /></span>}</div>
+                                                    </div>
+                                                    <div className="flex-1 bg-indigo-50/50 border border-indigo-200 text-slate-800 rounded-2xl p-4 text-sm leading-relaxed shadow-sm">
+                                                        <div className="font-bold text-xs text-indigo-700 mb-2 border-b border-indigo-100 pb-2 flex items-center gap-1.5"><ListTree className="w-3.5 h-3.5" /> Answer (Reranked Docs)</div>
+                                                        <div className="whitespace-pre-wrap">{m.contentReranked || <span className="flex gap-1"><span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" /><span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:0.1s]" /><span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:0.2s]" /></span>}</div>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className={`px-4 py-3 text-sm leading-relaxed rounded-2xl shadow-sm whitespace-pre-wrap ${m.role === "user" ? "bg-slate-900 text-white rounded-br-sm inline-block" : "bg-white border border-slate-200 text-slate-800 rounded-bl-sm"}`}>
+                                                    {m.content || <span className="flex gap-1"><span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" /><span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:0.1s]" /><span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:0.2s]" /></span>}
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>

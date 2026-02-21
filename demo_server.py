@@ -342,22 +342,46 @@ async def pipeline_stream(req: PipelineRequest):
             backend    = gen_cfg.pop("backend")
             model_name = gen_cfg.pop("model_name")
 
-            gen_doc = Document(
+            # Create generation payload for Retrived
+            gen_doc_ret = Document(
                 question=Question(req.query),
                 answers=Answer([]),
                 contexts=[Context(text=ctx.text, id=str(ctx.id or i),
                                   title=ctx.title if hasattr(ctx, "title") else "")
-                          for i, ctx in enumerate(reranked or retrieved[:req.n_contexts])],
+                          for i, ctx in enumerate(retrieved[:req.n_contexts])],
             )
+            
             generator = get_generator(rag_method, model_name, backend, **gen_cfg)
-            answers = generator.generate([gen_doc])
-            answer = answers[0] if answers else "No answer generated."
+
+            is_reranked = len(reranked_out) > 0
+            if is_reranked:
+                gen_doc_rr = Document(
+                    question=Question(req.query),
+                    answers=Answer([]),
+                    contexts=[Context(text=ctx.text, id=str(ctx.id or i),
+                                      title=ctx.title if hasattr(ctx, "title") else "")
+                              for i, ctx in enumerate(reranked[:req.n_contexts])],
+                )
+                answers = generator.generate([gen_doc_ret, gen_doc_rr])
+                ans_ret = answers[0] if answers else "No answer generated."
+                ans_rr = answers[1] if len(answers) > 1 else ans_ret
+            else:
+                answers = generator.generate([gen_doc_ret])
+                ans_ret = answers[0] if answers else "No answer generated."
+                ans_rr = ""
 
             # Stream tokens
-            words = answer.split()
-            for i, word in enumerate(words):
-                token = word + (" " if i < len(words) - 1 else "")
-                yield f"data: {json.dumps({'type':'token','content':token,'method':rag_method})}\n\n"
+            words_ret = ans_ret.split()
+            words_rr = ans_rr.split()
+            max_len = max(len(words_ret), len(words_rr))
+            
+            for i in range(max_len):
+                if i < len(words_ret):
+                    token_ret = words_ret[i] + (" " if i < len(words_ret) - 1 else "")
+                    yield f"data: {json.dumps({'type': 'token_retrieved' if is_reranked else 'token', 'content':token_ret, 'method':rag_method})}\n\n"
+                if is_reranked and i < len(words_rr):
+                    token_rr = words_rr[i] + (" " if i < len(words_rr) - 1 else "")
+                    yield f"data: {json.dumps({'type':'token_reranked', 'content':token_rr, 'method':rag_method})}\n\n"
                 await asyncio.sleep(0.015)
 
             yield 'data: {"type":"done"}\n\n'

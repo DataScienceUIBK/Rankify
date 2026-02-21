@@ -125,6 +125,16 @@ async function handleStreamingPipeline(payload: Record<string, unknown>) {
                             const token = (event.content as string) ?? '';
                             enqueue(`0:"${escapeJson(token)}"\n`);
 
+                        } else if (event.type === 'token_retrieved') {
+                            ragMethod = (event.method as string) ?? ragMethod;
+                            const token = (event.content as string) ?? '';
+                            enqueue(`3:"${escapeJson(token)}"\n`);
+
+                        } else if (event.type === 'token_reranked') {
+                            ragMethod = (event.method as string) ?? ragMethod;
+                            const token = (event.content as string) ?? '';
+                            enqueue(`4:"${escapeJson(token)}"\n`);
+
                         } else if (event.type === 'error') {
                             const errMsg = String(event.message ?? 'Unknown server error');
                             // Send final pipeline metadata (in case we have partial docs)
