@@ -4,10 +4,21 @@ import { useState } from "react";
 import { Play, Database, Search, ListTree, Loader2, Trophy, ArrowRight, CheckCircle2 } from "lucide-react";
 
 const DATASETS = [
-    { value: "nq-dev", label: "Natural Questions (Dev)" },
-    { value: "msmarco", label: "MS MARCO" },
-    { value: "triviaqa", label: "TriviaQA" },
-    { value: "covid", label: "TREC-COVID" }
+    { value: "dl19", label: "TREC Deep Learning 19 (dl19)" },
+    { value: "dl20", label: "TREC Deep Learning 20 (dl20)" },
+    { value: "beir-covid", label: "TREC-COVID (beir-covid)" },
+    { value: "beir-nfc", label: "NFCorpus (beir-nfc)" },
+    { value: "beir-touche", label: "Touché-2020 (beir-touche)" },
+    { value: "beir-dbpedia", label: "DBPedia (beir-dbpedia)" },
+    { value: "beir-scifact", label: "SciFact (beir-scifact)" },
+    { value: "beir-signal", label: "Signal-1M (beir-signal)" },
+    { value: "beir-news", label: "TREC-News (beir-news)" },
+    { value: "beir-robust04", label: "Robust04 (beir-robust04)" },
+    { value: "beir-arguana", label: "ArguAna (beir-arguana)" },
+    { value: "beir-fever", label: "FEVER (beir-fever)" },
+    { value: "beir-fiqa", label: "FiQA (beir-fiqa)" },
+    { value: "beir-quora", label: "Quora (beir-quora)" },
+    { value: "beir-scidocs", label: "SciDocs (beir-scidocs)" }
 ];
 
 const RETRIEVERS = [
@@ -58,7 +69,7 @@ function MetricBar({ label, value, max, format = "number" }: { label: string; va
 }
 
 export default function ArenaPage() {
-    const [dataset, setDataset] = useState("nq-dev");
+    const [dataset, setDataset] = useState("beir-covid");
     const [queries, setQueries] = useState(5);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -116,11 +127,11 @@ export default function ArenaPage() {
                 {/* Header */}
                 <div className="flex flex-col gap-2text-center md:text-left">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold w-fit mb-2">
-                        <Trophy className="w-3.5 h-3.5" /> Model Arena
+                        <Trophy className="w-3.5 h-3.5" /> BEIR Evaluation
                     </div>
-                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">Interactive Benchmarking</h1>
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">BEIR Dataset Evaluation Arena</h1>
                     <p className="text-slate-500 max-w-2xl">
-                        Pit two RAG pipelines against each other on standard academic datasets. Real-time evaluation of NDCG@10, MRR@10, and Latency using the Rankify evaluation engine.
+                        Compare two reranking methods on standard BEIR datasets. Real-time evaluation of NDCG@10, MRR@10, and Latency using the Rankify evaluation engine without saving results to logs.
                     </p>
                 </div>
 
