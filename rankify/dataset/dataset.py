@@ -44,8 +44,7 @@ class Question:
             # Output: 'What is the capital of France?'
             ```
         """
-        cls.question = question if question.endswith("?") else question +"?"
-        return cls.question
+        return question if question.endswith("?") else question +"?"
     
     def __str__(self) -> str:
         """
