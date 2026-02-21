@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Send, Bot, User, Code2, Sparkles, ServerCrash, Loader2, ArrowRight } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface AgentRecommendation {
     code_snippet: string | null;
@@ -108,8 +110,14 @@ export default function AgentPage() {
                                     {m.role === "user" ? <User className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
                                 </div>
                                 <div className={`flex flex-col gap-2 max-w-[80%] ${m.role === "user" ? "items-end" : "items-start"}`}>
-                                    <div className={`p-4 rounded-2xl text-sm leading-relaxed ${m.role === "user" ? "bg-slate-100 text-slate-800 rounded-tr-sm" : "bg-white border border-slate-100 shadow-sm text-slate-700 rounded-tl-sm whitespace-pre-wrap"}`}>
-                                        {m.content || <span className="animate-pulse text-slate-400">Thinking...</span>}
+                                    <div className={`p-4 rounded-2xl text-sm leading-relaxed ${m.role === "user" ? "bg-slate-100 text-slate-800 rounded-tr-sm" : "bg-white border border-slate-100 shadow-sm text-slate-700 rounded-tl-sm prose prose-sm max-w-none prose-slate"}`}>
+                                        {m.content ? (
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                {m.content}
+                                            </ReactMarkdown>
+                                        ) : (
+                                            <span className="animate-pulse text-slate-400">Thinking...</span>
+                                        )}
                                     </div>
                                     {/* Action button to view recommendation if it exists */}
                                     {m.recommendation && (
