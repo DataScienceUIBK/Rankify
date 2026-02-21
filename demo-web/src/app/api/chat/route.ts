@@ -2,22 +2,31 @@
 // Proxies the UI chat request to the Python demo_server.py
 // Supports both streaming (SSE) and non-streaming responses.
 
-// Use Node.js runtime (not edge) because we need to make server-to-server fetch calls
 export const runtime = 'nodejs';
 
 const PYTHON_API = process.env.RANKIFY_API_URL || 'http://localhost:8000';
 
 export async function POST(req: Request) {
-    const body = await req.json();
-    const { messages, configuration } = body;
+    let body: Record<string, unknown>;
+    try {
+        body = await req.json();
+    } catch {
+        return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400 });
+    }
+
+    const { messages, configuration } = body as {
+        messages?: { role: string; content: string }[];
+        configuration?: Record<string, string>;
+    };
 
     if (!messages || messages.length === 0) {
         return new Response(JSON.stringify({ error: 'No messages provided' }), { status: 400 });
     }
 
-    // Get the latest user message
-    const query = messages[messages.length - 1]?.content ?? '';
-    if (!query.trim()) {
+    // The LAST user message is the query. We do NOT reuse the whole history —
+    // each retrieval is independent. This is the correct behavior.
+    const query = messages[messages.length - 1]?.content?.trim() ?? '';
+    if (!query) {
         return new Response(JSON.stringify({ error: 'Empty query' }), { status: 400 });
     }
 
@@ -27,7 +36,7 @@ export async function POST(req: Request) {
         retriever = 'bm25',
         rerankerCategory = 'flashrank',
         rerankerModel = 'ms-marco-MiniLM-L-12-v2',
-        generator = 'openai',
+        generator = 'azure',
     } = configuration ?? {};
 
     const payload = {
@@ -38,24 +47,14 @@ export async function POST(req: Request) {
         rerankerModel,
         generator,
         dataSource: dataSource === 'wiki' ? 'wiki' : 'msmarco',
+        n_docs: 100,      // Always retrieve 100 candidates; reranker picks best n_contexts
+        n_contexts: 10,
     };
 
-    // ── Check if Python server is reachable ──────────────────────────────────────
-    try {
-        const healthRes = await fetch(`${PYTHON_API}/health`, {
-            signal: AbortSignal.timeout(3000),
-        });
-        if (!healthRes.ok) throw new Error('Server not healthy');
-    } catch {
-        // Python server unavailable → return a clear error through the AI stream format
-        return streamText(
-            `⚠️ **Rankify Python server is not running.**\n\n` +
-            `Please start it with:\n\`\`\`\npython demo_server.py --port 8000\n\`\`\`\n\n` +
-            `Make sure Rankify is installed: \`pip install "rankify[all]"\``
-        );
-    }
+    // NOTE: No per-request health check here — it adds latency AND the AbortSignal
+    // can interfere with downstream requests. The /api/health-check route is polled
+    // independently by the UI every 30 seconds.
 
-    // ── Use SSE streaming endpoint for full RAG, regular POST for retrieve/rerank ─
     if (pipelineMode === 'rag') {
         return handleStreamingPipeline(payload);
     } else {
@@ -69,16 +68,20 @@ async function handleStreamingPipeline(payload: Record<string, unknown>) {
 
     const stream = new ReadableStream({
         async start(controller) {
+            const enqueue = (data: string) => controller.enqueue(encoder.encode(data));
+
             try {
                 const res = await fetch(`${PYTHON_API}/pipeline/stream`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload),
-                    signal: AbortSignal.timeout(120_000),
+                    signal: AbortSignal.timeout(180_000),
                 });
 
                 if (!res.ok || !res.body) {
-                    throw new Error(`Server returned ${res.status}`);
+                    const errText = await res.text().catch(() => `HTTP ${res.status}`);
+                    enqueue(`0:"⚠️ Server error: ${escapeJson(errText)}"\n`);
+                    return;
                 }
 
                 const reader = res.body.getReader();
@@ -86,15 +89,18 @@ async function handleStreamingPipeline(payload: Record<string, unknown>) {
 
                 let retrievedDocs: unknown[] = [];
                 let rerankedDocs: unknown[] = [];
-                let answerSoFar = '';
-                let headerSent = false;
+                let ragMethod: string | undefined;
+
+                let buffer = '';
 
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
 
-                    const chunk = dec.decode(value, { stream: true });
-                    const lines = chunk.split('\n');
+                    buffer += dec.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    // Keep last partial line in buffer
+                    buffer = lines.pop() ?? '';
 
                     for (const line of lines) {
                         if (!line.startsWith('data: ')) continue;
@@ -106,37 +112,35 @@ async function handleStreamingPipeline(payload: Record<string, unknown>) {
 
                         if (event.type === 'retrieved') {
                             retrievedDocs = event.docs as unknown[];
-                            // Send pipeline metadata as a special annotation chunk
                             const meta = JSON.stringify({ pipelineMeta: { retrievedDocs, rerankedDocs } });
-                            controller.enqueue(encoder.encode(`2:${JSON.stringify([meta])}\n`));
+                            enqueue(`2:${JSON.stringify([meta])}\n`);
 
                         } else if (event.type === 'reranked') {
                             rerankedDocs = event.docs as unknown[];
                             const meta = JSON.stringify({ pipelineMeta: { retrievedDocs, rerankedDocs } });
-                            controller.enqueue(encoder.encode(`2:${JSON.stringify([meta])}\n`));
+                            enqueue(`2:${JSON.stringify([meta])}\n`);
 
                         } else if (event.type === 'token') {
+                            ragMethod = (event.method as string) ?? ragMethod;
                             const token = (event.content as string) ?? '';
-                            answerSoFar += token;
-                            // Write in Vercel AI SDK data-stream format: `0:"word "`
-                            if (!headerSent) { headerSent = true; }
-                            const escaped = token.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
-                            controller.enqueue(encoder.encode(`0:"${escaped}"\n`));
-
-                        } else if (event.type === 'done') {
-                            break;
+                            enqueue(`0:"${escapeJson(token)}"\n`);
 
                         } else if (event.type === 'error') {
-                            const err = event.message ?? 'Unknown error';
-                            const escaped = String(err).replace(/"/g, '\\"');
-                            controller.enqueue(encoder.encode(`0:"\\n\\n⚠️ Error: ${escaped}"\n`));
+                            const errMsg = String(event.message ?? 'Unknown server error');
+                            // Send final pipeline metadata (in case we have partial docs)
+                            const meta = JSON.stringify({ pipelineMeta: { retrievedDocs, rerankedDocs, ragMethod } });
+                            enqueue(`2:${JSON.stringify([meta])}\n`);
+                            enqueue(`0:"\\n\\n⚠️ Error: ${escapeJson(errMsg)}"\n`);
                         }
+                        // 'done' event — just stop loop naturally
                     }
                 }
             } catch (err) {
-                const msg = `⚠️ Failed to connect to Rankify server: ${err}`;
-                const escaped = msg.replace(/"/g, '\\"');
-                controller.enqueue(encoder.encode(`0:"${escaped}"\n`));
+                const msg = err instanceof Error ? err.message : String(err);
+                const hint = msg.toLowerCase().includes('fetch') || msg.toLowerCase().includes('connect')
+                    ? '\\n\\nMake sure the Python server is running: `python demo_server.py --port 8000`'
+                    : '';
+                enqueue(`0:"⚠️ ${escapeJson(msg)}${hint}"\n`);
             } finally {
                 controller.close();
             }
@@ -147,6 +151,7 @@ async function handleStreamingPipeline(payload: Record<string, unknown>) {
         headers: {
             'Content-Type': 'text/plain; charset=utf-8',
             'x-vercel-ai-data-stream': 'v1',
+            'Cache-Control': 'no-cache',
         },
     });
 }
@@ -157,54 +162,76 @@ async function handleBlockingPipeline(payload: Record<string, unknown>, mode: st
 
     const stream = new ReadableStream({
         async start(controller) {
+            const enqueue = (data: string) => controller.enqueue(encoder.encode(data));
+
             try {
                 const res = await fetch(`${PYTHON_API}/pipeline`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload),
-                    signal: AbortSignal.timeout(60_000),
+                    signal: AbortSignal.timeout(90_000),
                 });
 
-                const data = await res.json();
-
-                if (data.error) {
-                    throw new Error(data.error);
+                if (!res.ok) {
+                    const errText = await res.text().catch(() => `HTTP ${res.status}`);
+                    enqueue(`0:"⚠️ Server error: ${escapeJson(errText)}"\n`);
+                    return;
                 }
 
-                // Send pipeline metadata annotation
+                const data = await res.json() as {
+                    retrieved_docs?: unknown[];
+                    reranked_docs?: unknown[];
+                    retriever_latency_ms?: number;
+                    reranker_latency_ms?: number;
+                    error?: string;
+                };
+
+                if (data.error) throw new Error(data.error);
+
+                // Send pipeline metadata annotation first
                 const meta = JSON.stringify({
                     pipelineMeta: {
                         retrievedDocs: data.retrieved_docs ?? [],
                         rerankedDocs: data.reranked_docs ?? [],
                     }
                 });
-                controller.enqueue(encoder.encode(`2:${JSON.stringify([meta])}\n`));
+                enqueue(`2:${JSON.stringify([meta])}\n`);
 
-                // Build a descriptive text summary as the "answer"
+                // Build descriptive summary
                 const numDocs = (data.retrieved_docs ?? []).length;
                 const numReranked = (data.reranked_docs ?? []).length;
+                const retriever = String(payload.retriever ?? 'bm25');
+                const ds = String(payload.dataSource ?? 'wiki');
+                const rrCat = String(payload.rerankerCategory ?? '');
+                const rrModel = String(payload.rerankerModel ?? '');
+                const rMs = data.retriever_latency_ms ?? 0;
+                const rrMs = data.reranker_latency_ms ?? 0;
 
-                let summary = '';
+                let summary: string;
                 if (mode === 'retrieve') {
-                    summary = `Retrieved **${numDocs} documents** using **${payload.retriever}** from **${payload.dataSource}**.\n\n`;
-                    summary += `Top results shown above. ⬆️ Click "Documents Retrieved" to expand.`;
+                    summary = numDocs > 0
+                        ? `Retrieved **${numDocs} documents** using **${retriever}** from **${ds}**.\n\nExpand the ⬆️ panel above to view results.`
+                        : `No documents found for this query using **${retriever}** on **${ds}**. Try a different query or retriever.`;
                 } else {
-                    summary = `Retrieved **${numDocs} documents** then reranked to **${numReranked} top passages** using **${payload.rerankerCategory}** (${payload.rerankerModel}).\n\n`;
-                    summary += `Retrieval: ${data.retriever_latency_ms}ms · Reranking: ${data.reranker_latency_ms}ms`;
+                    summary = numDocs > 0
+                        ? `Retrieved **${numDocs} documents** then reranked to **${numReranked} top passages** using **${rrCat}** (${rrModel}).\n\nRetrieval: ${rMs.toFixed(0)}ms · Reranking: ${rrMs.toFixed(0)}ms`
+                        : `No documents retrieved for this query. Try a different query or retriever.`;
                 }
 
-                // Stream the summary as tokens
+                // Stream summary word by word
                 const words = summary.split(' ');
                 for (let i = 0; i < words.length; i++) {
-                    const word = words[i] + (i < words.length - 1 ? ' ' : '');
-                    const escaped = word.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
-                    controller.enqueue(encoder.encode(`0:"${escaped}"\n`));
-                    await sleep(15);
+                    const token = words[i] + (i < words.length - 1 ? ' ' : '');
+                    enqueue(`0:"${escapeJson(token)}"\n`);
+                    await sleep(12);
                 }
 
             } catch (err) {
-                const msg = `⚠️ Error: ${err}`;
-                controller.enqueue(encoder.encode(`0:"${msg.replace(/"/g, '\\"')}"\n`));
+                const msg = err instanceof Error ? err.message : String(err);
+                const hint = msg.toLowerCase().includes('fetch') || msg.toLowerCase().includes('connect')
+                    ? ' Make sure the Python server is running: python demo_server.py --port 8000'
+                    : '';
+                enqueue(`0:"⚠️ Error: ${escapeJson(msg + hint)}"\n`);
             } finally {
                 controller.close();
             }
@@ -215,28 +242,19 @@ async function handleBlockingPipeline(payload: Record<string, unknown>, mode: st
         headers: {
             'Content-Type': 'text/plain; charset=utf-8',
             'x-vercel-ai-data-stream': 'v1',
+            'Cache-Control': 'no-cache',
         },
     });
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
-function streamText(text: string): Response {
-    const encoder = new TextEncoder();
-    const words = text.split(' ');
-    const stream = new ReadableStream({
-        async start(controller) {
-            for (let i = 0; i < words.length; i++) {
-                const word = words[i] + (i < words.length - 1 ? ' ' : '');
-                const escaped = word.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
-                controller.enqueue(encoder.encode(`0:"${escaped}"\n`));
-                await sleep(20);
-            }
-            controller.close();
-        }
-    });
-    return new Response(stream, {
-        headers: { 'Content-Type': 'text/plain; charset=utf-8', 'x-vercel-ai-data-stream': 'v1' }
-    });
+/** Escape a string for embedding inside a JSON double-quoted string. */
+function escapeJson(s: string): string {
+    return s
+        .replace(/\\/g, '\\\\')
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r');
 }
 
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
