@@ -120,7 +120,7 @@ export default function ArenaPage() {
                     </div>
                     <h1 className="text-3xl font-black text-slate-900 tracking-tight">Interactive Benchmarking</h1>
                     <p className="text-slate-500 max-w-2xl">
-                        Pit two RAG pipelines against each other on standard academic datasets. Real-time evaluation of MRR@10, Context Exact Match, and Latency using the Rankify evaluation engine.
+                        Pit two RAG pipelines against each other on standard academic datasets. Real-time evaluation of NDCG@10, MRR@10, and Latency using the Rankify evaluation engine.
                     </p>
                 </div>
 
@@ -206,8 +206,8 @@ export default function ArenaPage() {
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-4 mt-2">
-                                    <MetricBar label="Top-10 Accuracy (MRR@10 approx)" value={results.pipeline_a.mrr_10} max={100} format="percent" />
-                                    <MetricBar label="Context Exact Match (RAG Potential)" value={results.pipeline_a.context_em} max={100} format="percent" />
+                                    <MetricBar label="NDCG@10 (Ranking Quality)" value={results.pipeline_a.ndcg_10} max={100} format="percent" />
+                                    <MetricBar label="MRR@10 (Top Relevance)" value={results.pipeline_a.mrr_10} max={100} format="percent" />
                                     <MetricBar label="Avg End-to-End Latency" value={results.pipeline_a.latency_ms} max={3000} format="ms" />
                                 </div>
                             </div>
@@ -224,8 +224,8 @@ export default function ArenaPage() {
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-4 mt-2">
-                                    <MetricBar label="Top-10 Accuracy (MRR@10 approx)" value={results.pipeline_b.mrr_10} max={100} format="percent" />
-                                    <MetricBar label="Context Exact Match (RAG Potential)" value={results.pipeline_b.context_em} max={100} format="percent" />
+                                    <MetricBar label="NDCG@10 (Ranking Quality)" value={results.pipeline_b.ndcg_10} max={100} format="percent" />
+                                    <MetricBar label="MRR@10 (Top Relevance)" value={results.pipeline_b.mrr_10} max={100} format="percent" />
                                     <MetricBar label="Avg End-to-End Latency" value={results.pipeline_b.latency_ms} max={3000} format="ms" />
                                 </div>
                             </div>
