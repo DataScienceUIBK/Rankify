@@ -849,7 +849,7 @@ rankify-index index data/wikipedia_100.jsonl \
 ---
 
 ### 2️⃣ Running Retrieval
-To perform retrieval using **Rankify**, you can choose from various retrieval methods such as **BM25, DPR, ANCE, Contriever, ColBERT, and BGE**.  
+To perform retrieval using **Rankify**, you can choose from various retrieval methods such as **BM25, DPR, ANCE, Contriever, ColBERT, BGE, Sbert, Nomic, Instructor, DiverRetriever, SRF, E5, RaDeR, M2, GritLM, ReasonEmbed, ReasonIR and BGEReasoner**.  
 
 ### Step 1: Setup example queries
 
@@ -882,56 +882,56 @@ Retrieval  ```index_type``` (e.g., ```"wiki```", "```msmarco```") to load pre-co
 bm25_retriever_wiki = Retriever(method="bm25", n_docs=5, index_type="wiki")
 
 # BM25 retrieval on MS MARCO
-bm25_retriever_msmacro = Retriever(method="bm25", n_docs=5, index_type="msmarco")
+bm25_retriever_msmarco = Retriever(method="bm25", n_docs=5, index_type="msmarco")
 
 
 # DPR (multi-encoder) retrieval on Wikipedia
 dpr_retriever_wiki = Retriever(method="dpr", model="dpr-multi", n_docs=5, index_type="wiki")
 
 # DPR (multi-encoder) retrieval on MS MARCO
-dpr_retriever_msmacro = Retriever(method="dpr", model="dpr-multi", n_docs=5, index_type="msmarco")
+dpr_retriever_msmarco = Retriever(method="dpr", model="dpr-multi", n_docs=5, index_type="msmarco")
 
 
 # DPR (single-encoder) retrieval on Wikipedia
 dpr_retriever_wiki = Retriever(method="dpr", model="dpr-single", n_docs=5, index_type="wiki")
 
 # DPR (single-encoder) retrieval on MS MARCO
-dpr_retriever_msmacro = Retriever(method="dpr", model="dpr-single", n_docs=5, index_type="msmarco")
+dpr_retriever_msmarco = Retriever(method="dpr", model="dpr-single", n_docs=5, index_type="msmarco")
 
 
 # ANCE retrieval on Wikipedia
 ance_retriever_wiki = Retriever(method="ance", model="ance-multi", n_docs=5, index_type="wiki")
 
 # ANCE retrieval on MS MARCO
-ance_retriever_msmacro = Retriever(method="ance", model="ance-multi", n_docs=5, index_type="msmarco")
+ance_retriever_msmarco = Retriever(method="ance", model="ance-multi", n_docs=5, index_type="msmarco")
 
 
 # Contriever retrieval on Wikipedia
 contriever_retriever_wiki = Retriever(method="contriever", model="facebook/contriever-msmarco", n_docs=5, index_type="wiki")
 
 # Contriever retrieval on MS MARCO
-contriever_retriever_msmacro = Retriever(method="contriever", model="facebook/contriever-msmarco", n_docs=5, index_type="msmarco")
+contriever_retriever_msmarco = Retriever(method="contriever", model="facebook/contriever-msmarco", n_docs=5, index_type="msmarco")
 
 
 # ColBERT retrieval on Wikipedia
 colbert_retriever_wiki = Retriever(method="colbert", model="colbert-ir/colbertv2.0", n_docs=5, index_type="wiki")
 
 # ColBERT retrieval on MS MARCO
-colbert_retriever_msmacro = Retriever(method="colbert", model="colbert-ir/colbertv2.0", n_docs=5, index_type="msmarco")
+colbert_retriever_msmarco = Retriever(method="colbert", model="colbert-ir/colbertv2.0", n_docs=5, index_type="msmarco")
 
 
 # BGE retrieval on Wikipedia
 bge_retriever_wiki = Retriever(method="bge", model="BAAI/bge-large-en-v1.5", n_docs=5, index_type="wiki")
 
 # BGE retrieval on MS MARCO
-bge_retriever_msmacro = Retriever(method="bge", model="BAAI/bge-large-en-v1.5", n_docs=5, index_type="msmarco")
+bge_retriever_msmarco = Retriever(method="bge", model="BAAI/bge-large-en-v1.5", n_docs=5, index_type="msmarco")
 
 
 # Hyde retrieval on Wikipedia
 hyde_retriever_wiki = Retriever(method="hyde" , n_docs=5, index_type="wiki", api_key=OPENAI_API_KEY )
 
 # Hyde retrieval on MS MARCO
-hyde_retriever_msmacro = Retriever(method="hyde", n_docs=5, index_type="msmarco", api_key=OPENAI_API_KEY)
+hyde_retriever_msmarco = Retriever(method="hyde", n_docs=5, index_type="msmarco", api_key=OPENAI_API_KEY)
 ```
 
 **Option B:**
@@ -939,7 +939,7 @@ Retrieval with custom datasets and automated caching.
 
 Featuring some of the latest 7B+ parameter models, all of the models below are purposed only for usage with custom datasets. 
 
-Simply provide a corpus_path to a ```.jsonl``` file, and the model will embed and cache the data locally on the first run.
+Simply pass a ```.jsonl``` file to ```corpus_path```, ensuring your data maps to the required ```id:``` and ```text:``` fields, and the model will embed and cache the data locally on the first run.
 
 ```python
 # Bi-encoders as implemented in the diver framework (11 configurable models, specified by model_id)
@@ -965,6 +965,8 @@ rader_retriever = Retriever(method="diver-dense", model_id="rader", corpus_path=
 
 nomic_retriever = Retriever(method="diver-dense", model_id="nomic", corpus_path="data/my_corpus.jsonl", encode_batch_size=4, n_docs=5)
 
+diver_retriever = Retriever(method="diver-dense", model_id="diver", corpus_path="data/my_corpus.jsonl", encode_batch_size=4, n_docs=5)
+
 
 # Reasonir retrieval 
 reasonir_retriever = Retriever(method="reasonir", corpus_path="data/my_corpus.jsonl", encode_batch_size=4, n_docs=5)
@@ -980,6 +982,40 @@ reasonembed_qwen4b_retriever = Retriever(method="reason-embed", model_id="llama-
 
 # BgeReasonEmbed retrieval
 bge_reasoner_retriever = Retriever(method="bge-reasoner-embed", corpus_path="data/my_corpus.jsonl", encode_batch_size=8, n_docs=5)
+```
+### Retrieval Example: ReasonIR on the BRIGHT Benchmark (Biology queries)
+This example demonstrates how to evaluate the `reasonir/ReasonIR-8B` model on the reasoning-intensive BRIGHT benchmark.
+
+```python
+from datasets import load_dataset
+from rankify.dataset.dataset import Document, Question, Answer
+from rankify.retrievers.retriever import Retriever
+
+corpus_path = "bright_biology_corpus.jsonl"       # .jsonl corpus for retrieval
+
+docs = load_dataset("xlangai/BRIGHT", "documents", split="biology")
+docs.to_json(corpus_path, force_ascii=False)  
+
+queries = load_dataset("xlangai/BRIGHT", "examples", split="biology")
+    
+documents = []
+for item in queries:
+    doc = Document(id=item["id"], 
+                   question=Question(question=item["query"]), 
+                   answers=Answer(answers=item.get("gold_ids", [])))
+    documents.append(doc)
+    break
+    
+retriever = Retriever(
+    method="reasonir",            # Use ReasonIR retriever
+    n_docs=3,                     # Retrieve top 3 documents per query
+    corpus_path=corpus_path,      # Path to the JSONL we just created
+    text_field="content",         # BRIGHT uses 'content' instead of 'text'
+    batch_size=4,
+)
+
+results = retriever.retrieve(documents)
+
 ```
 
 ### Step 3: Execute and View Results
@@ -1413,6 +1449,7 @@ print("RAGAS (OpenAI):", {k: v for k, v in scores_openai.items() if k.startswith
 - ✅ **[ReasonIR](https://arxiv.org/abs/2504.20595)** 
 - ✅ **[BGE-Reasoner](https://huggingface.co/BAAI/bge-en-icl)**
 - ✅ **[ReasonEmbed](https://arxiv.org/abs/2510.08252)**
+- ✅ **[DiverRetriever](https://huggingface.co/AQ-MedAI/Diver-Retriever-4B)**
 - 🕒 **RepLlama**
 - 🕒 **coCondenser**   
 - 🕒 **Spar** 

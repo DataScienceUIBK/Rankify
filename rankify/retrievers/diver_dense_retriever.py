@@ -3,8 +3,8 @@ DiverDenseRetriever implementing a variety of dense retriever models from diver'
     - https://github.com/AQ-MedAI/Diver/blob/main/Retriever/retrievers.py
 
 Supports:
-    - SentenceTransformers (bge, sbert, nomic, instructor)
-    - HF AutoModels (sf, qwen, e5, rader, contriever, m2)
+    - SentenceTransformers (bge, sbert, nomic, instructor, diver-retriever)
+    - HF AutoModels (sf, e5, rader, contriever, m2)
     - GritLM (grit)
 """
 
@@ -155,7 +155,9 @@ class DiverDenseRetriever(BaseRetriever):
         elif self.model_id == "contriever_st":
             self.model = SentenceTransformer('nishimoto/contriever-sentencetransformer', device=self.device)
         elif self.model_id == "nomic":
-            self.model = SentenceTransformer(self.checkpoint or "nomic-ai/nomic-embed-text-v1", trust_remote_code=True, device=self.device)
+            self.model = SentenceTransformer("nomic-ai/nomic-embed-text-v1", trust_remote_code=True, device=self.device)
+        elif self.model_id == "diver":
+            self.model = SentenceTransformer("AQ-MedAI/Diver-Retriever-4B", trust_remote_code=True, device=self.device)
         elif self.model_id == "inst-l":
             self.model = SentenceTransformer("hkunlp/instructor-large", device=self.device)
             self.model.max_seq_length = self.doc_max_length
@@ -312,7 +314,7 @@ class DiverDenseRetriever(BaseRetriever):
         docs = self.doc_texts
         
         # Encoding logic based on model_id
-        if self.model_id in ["bge", "sbert", "contriever_st", "nomic"]:
+        if self.model_id in ["bge", "sbert", "contriever_st", "nomic", "diver"]:
             doc_emb = self.model.encode(docs, show_progress_bar=True, batch_size=self.encode_batch_size, normalize_embeddings=True)
             
         elif self.model_id in ["inst-l", "inst-xl"]:
@@ -352,7 +354,7 @@ class DiverDenseRetriever(BaseRetriever):
         return None
 
     def _encode_queries(self, queries: List[str]):
-        if self.model_id in ["bge", "sbert", "contriever_st", "nomic"]:
+        if self.model_id in ["bge", "sbert", "contriever_st", "nomic", "diver"]:
             if self.model_id == "bge":
                 queries = add_instruct_concatenate(texts=queries, task=self.task, instruction=self.instruction_query)
             return self.model.encode(queries, show_progress_bar=True, batch_size=self.encode_batch_size, normalize_embeddings=True)
