@@ -515,28 +515,36 @@ async def arena_run(req: ArenaRequest):
                 ret_results = reranker.rank(ret_results)
                 rr_latency = (time.time() - t1) * 1000 / len(docs_copy)
             
-            # Evaluation
+            # Evaluation - use true TREC evaluation as per BEIR standards
             metrics = Metrics(ret_results)
             use_rr = reranker is not None
-            ret_metrics = metrics.calculate_retrieval_metrics(ks=[10], use_reordered=use_rr)
             
-            # Gen Evaluation (we mock generation evaluation by F1/EM on just the retrieved contexts for speed)
-            # A full Generation eval takes too long for an interactive demo (requires hitting the LLM API 5 times)
-            # Wait, interactive demo will timeout. We will just evaluate Retrieval MRR@10 and F1 of contexts
-            em_score = 0
-            for doc in ret_results:
-                golden = doc.answers.answers
-                ctxs = doc.reorder_contexts if use_rr and doc.reorder_contexts else doc.contexts
-                pred_text = " ".join([c.text for c in ctxs[:3]])
-                normalized_pred = pred_text.lower()
-                for ans in golden:
-                    if ans.lower() in normalized_pred:
-                        em_score += 1
-                        break
-                        
+            # Formulate the correct qrel name for rankify
+            qrel_name = req.dataset
+            if req.dataset.startswith("beir-"):
+                qrel_name = req.dataset.split("-")[1]
+            elif req.dataset in ["nq-dev", "msmarco", "triviaqa"]:
+                qrel_name = req.dataset
+                
+            try:
+                trec_metrics = metrics.calculate_trec_metrics(
+                    ndcg_cuts=[10], 
+                    map_cuts=[10], 
+                    mrr_cuts=[10], 
+                    qrel=qrel_name, 
+                    use_reordered=use_rr
+                )
+                ndcg_10 = trec_metrics.get("ndcg@10", 0) * 100
+                mrr_10 = trec_metrics.get("mrr@10", 0) * 100
+            except Exception as e:
+                logger.error(f"TREC Eval Error: {e}")
+                fallback_metrics = metrics.calculate_retrieval_metrics(ks=[10], use_reordered=use_rr)
+                ndcg_10 = fallback_metrics.get("ndcg_10", 0) * 100
+                mrr_10 = fallback_metrics.get("top_10", 0) * 100
+            
             return {
-                "mrr_10": ret_metrics.get("top_10", 0),
-                "context_em": (em_score / len(docs_copy)) * 100,
+                "mrr_10": mrr_10,
+                "ndcg_10": ndcg_10,
                 "latency_ms": ret_latency + rr_latency
             }
 
