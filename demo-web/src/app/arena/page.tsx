@@ -1,6 +1,6 @@
 "use client";
-
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import RERANKERS_MAP from "./rerankers.json";
 import { Play, Database, Search, ListTree, Loader2, Trophy, ArrowRight, CheckCircle2 } from "lucide-react";
 
 const DATASETS = [
@@ -21,21 +21,7 @@ const DATASETS = [
     { value: "beir-scidocs", label: "SciDocs (beir-scidocs)" }
 ];
 
-const RETRIEVERS = [
-    { value: "bm25", label: "BM25 (Sparse)" },
-    { value: "dpr-multi", label: "DPR (Dense)" },
-    { value: "contriever", label: "Contriever" },
-    { value: "ance-multi", label: "ANCE" },
-    { value: "bge", label: "BGE v1.5" },
-];
-
-const RERANKERS = [
-    { value: "none", label: "None (Skip Reranking)" },
-    { value: "ms-marco-MiniLM-L-12-v2", label: "MiniLM L-12 (Cross-Encoder)" },
-    { value: "ms-marco-TinyBERT-L-2-v2", label: "TinyBERT (FlashRank)" },
-    { value: "bge-reranker-base", label: "BGE Reranker Base" },
-    { value: "monot5-base-msmarco", label: "MonoT5 Base" },
-];
+const METHODS = ["none", ...Object.keys(RERANKERS_MAP)];
 
 function Sel({ value, onChange, opts, label, icon: Icon }: { value: string; onChange: (v: string) => void; opts: { value: string; label: string }[]; label: string; icon: any; }) {
     return (
@@ -74,8 +60,8 @@ export default function ArenaPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const [pipeA, setPipeA] = useState({ retriever: "bm25", reranker: "none" });
-    const [pipeB, setPipeB] = useState({ retriever: "bge", reranker: "ms-marco-MiniLM-L-12-v2" });
+    const [pipeA, setPipeA] = useState({ retriever: "bm25", method: "none", model: "none" });
+    const [pipeB, setPipeB] = useState({ retriever: "bm25", method: "flashrank", model: "ms-marco-MiniLM-L-12-v2" });
 
     const [results, setResults] = useState<any>(null);
 
@@ -85,10 +71,10 @@ export default function ArenaPage() {
         setResults(null);
 
         // Helper to map UI selections to backend schema
-        const mapPipe = (p: any) => ({
+        const mapPipe = (p: typeof pipeA) => ({
             retriever: p.retriever,
-            rerankerCategory: p.reranker === "none" ? "none" : p.reranker.includes("monot5") ? "monot5" : p.reranker.includes("bge") ? "transformer_ranker" : "flashrank",
-            rerankerModel: p.reranker === "none" ? "" : p.reranker,
+            rerankerCategory: p.method,
+            rerankerModel: p.model === "none" ? "" : p.model,
             generator: "azure",
             ragMethod: "basic-rag"
         });
@@ -171,8 +157,23 @@ export default function ArenaPage() {
                                 Pipeline A (Baseline)
                             </div>
                             <div className="flex flex-col gap-4">
-                                <Sel value={pipeA.retriever} onChange={v => setPipeA(p => ({ ...p, retriever: v }))} opts={RETRIEVERS} label="Retriever" icon={Search} />
-                                <Sel value={pipeA.reranker} onChange={v => setPipeA(p => ({ ...p, reranker: v }))} opts={RERANKERS} label="Reranker" icon={ListTree} />
+                                <Sel value={pipeA.retriever} onChange={() => { }} opts={[{ value: "bm25", label: "BM25 (Sparse Base)" }]} label="Retriever (Fixed by BEIR)" icon={Search} />
+                                <Sel
+                                    value={pipeA.method}
+                                    onChange={v => setPipeA(p => ({ ...p, method: v, model: v === "none" ? "none" : (RERANKERS_MAP[v as keyof typeof RERANKERS_MAP]?.[0] || "") }))}
+                                    opts={METHODS.map(m => ({ value: m, label: m === "none" ? "None (Base BM25 Only)" : m }))}
+                                    label="Reranking Method"
+                                    icon={ListTree}
+                                />
+                                {pipeA.method !== "none" && (
+                                    <Sel
+                                        value={pipeA.model}
+                                        onChange={v => setPipeA(p => ({ ...p, model: v }))}
+                                        opts={(RERANKERS_MAP[pipeA.method as keyof typeof RERANKERS_MAP] || []).map(m => ({ value: m, label: m }))}
+                                        label="Model Variant"
+                                        icon={Database}
+                                    />
+                                )}
                             </div>
                         </div>
 
@@ -183,8 +184,23 @@ export default function ArenaPage() {
                                 Pipeline B (Challenger)
                             </div>
                             <div className="flex flex-col gap-4">
-                                <Sel value={pipeB.retriever} onChange={v => setPipeB(p => ({ ...p, retriever: v }))} opts={RETRIEVERS} label="Retriever" icon={Search} />
-                                <Sel value={pipeB.reranker} onChange={v => setPipeB(p => ({ ...p, reranker: v }))} opts={RERANKERS} label="Reranker" icon={ListTree} />
+                                <Sel value={pipeB.retriever} onChange={() => { }} opts={[{ value: "bm25", label: "BM25 (Sparse Base)" }]} label="Retriever (Fixed by BEIR)" icon={Search} />
+                                <Sel
+                                    value={pipeB.method}
+                                    onChange={v => setPipeB(p => ({ ...p, method: v, model: v === "none" ? "none" : (RERANKERS_MAP[v as keyof typeof RERANKERS_MAP]?.[0] || "") }))}
+                                    opts={METHODS.map(m => ({ value: m, label: m === "none" ? "None (Base BM25 Only)" : m }))}
+                                    label="Reranking Method"
+                                    icon={ListTree}
+                                />
+                                {pipeB.method !== "none" && (
+                                    <Sel
+                                        value={pipeB.model}
+                                        onChange={v => setPipeB(p => ({ ...p, model: v }))}
+                                        opts={(RERANKERS_MAP[pipeB.method as keyof typeof RERANKERS_MAP] || []).map(m => ({ value: m, label: m }))}
+                                        label="Model Variant"
+                                        icon={Database}
+                                    />
+                                )}
                             </div>
                         </div>
                     </div>
@@ -213,7 +229,7 @@ export default function ArenaPage() {
                                     <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-lg">A</div>
                                     <div>
                                         <div className="font-bold text-slate-800">Pipeline A</div>
-                                        <div className="text-xs text-slate-500">{RETRIEVERS.find(r => r.value === pipeA.retriever)?.label} + {RERANKERS.find(r => r.value === pipeA.reranker)?.label}</div>
+                                        <div className="text-xs text-slate-500">BM25 {pipeA.method !== "none" ? `+ ${pipeA.method} (${pipeA.model})` : "(No Reranker)"}</div>
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-4 mt-2">
@@ -231,7 +247,7 @@ export default function ArenaPage() {
                                     <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-lg">B</div>
                                     <div>
                                         <div className="font-bold text-slate-800">Pipeline B</div>
-                                        <div className="text-xs text-slate-500">{RETRIEVERS.find(r => r.value === pipeB.retriever)?.label} + {RERANKERS.find(r => r.value === pipeB.reranker)?.label}</div>
+                                        <div className="text-xs text-slate-500">BM25 {pipeB.method !== "none" ? `+ ${pipeB.method} (${pipeB.model})` : "(No Reranker)"}</div>
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-4 mt-2">
