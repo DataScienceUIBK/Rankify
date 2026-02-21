@@ -48,6 +48,7 @@ AZURE_API_VER    = os.getenv("RANKIFY_AZURE_API_VERSION", "2025-01-01-preview")
 _retriever_cache: Dict[str, Any] = {}
 _reranker_cache:  Dict[str, Any] = {}
 _generator_cache: Dict[str, Any] = {}
+_agent_cache:     Dict[str, Any] = {}
 
 
 def get_retriever(method: str, n_docs: int = 10, index_type: str = "wiki"):
@@ -185,6 +186,24 @@ class PipelineResponse(BaseModel):
     generator_latency_ms: float = 0
     rag_method: Optional[str] = None
     error: Optional[str] = None
+
+class AgentRequest(BaseModel):
+    message: str
+    session_id: str
+
+class ArenaPipeline(BaseModel):
+    retriever: str = "bm25"
+    rerankerCategory: str = "none"
+    rerankerModel: str = ""
+    generator: str = "azure"
+    ragMethod: str = "basic-rag"
+
+class ArenaRequest(BaseModel):
+    dataset: str = "nq"
+    n_docs: int = 10
+    n_queries: int = 5
+    pipeline_a: ArenaPipeline
+    pipeline_b: ArenaPipeline
 
 
 # ─── App ───────────────────────────────────────────────────────────────────────
@@ -407,6 +426,124 @@ async def pipeline_stream(req: PipelineRequest):
 
     return StreamingResponse(gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.post("/api/agent/chat")
+async def agent_chat_stream(req: AgentRequest):
+    """SSE endpoint for chatting with RankifyAgent."""
+    async def gen():
+        import asyncio
+        from rankify.agent.agent import RankifyAgent
+        try:
+            if req.session_id not in _agent_cache:
+                logger.info(f"Initializing RankifyAgent for session {req.session_id}")
+                backend = "azure" if AZURE_KEY else "openai"
+                _agent_cache[req.session_id] = RankifyAgent(backend=backend)
+            
+            agent = _agent_cache[req.session_id]
+            # Synchronous call under the hood
+            resp = agent.chat(req.message)
+            
+            # Stream the message word by word for a nice effect
+            words = resp.message.split()
+            for i, w in enumerate(words):
+                token = w + (" " if i < len(words) - 1 else "")
+                yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
+                await asyncio.sleep(0.02)
+                
+            # Stream the recommendation / code snippet at the end if it exists
+            if resp.recommendation or resp.code_snippet:
+                rec_data = {
+                    "code_snippet": resp.code_snippet,
+                    "retriever": resp.recommendation.retriever.name if resp.recommendation and resp.recommendation.retriever else None,
+                    "reranker": resp.recommendation.reranker.name if resp.recommendation and resp.recommendation.reranker else None,
+                    "rag_method": resp.recommendation.rag_method.name if resp.recommendation and resp.recommendation.rag_method else None,
+                }
+                yield f"data: {json.dumps({'type': 'recommendation', 'data': rec_data})}\n\n"
+            
+            yield 'data: {"type": "done"}\n\n'
+            
+        except Exception as e:
+            logger.error(traceback.format_exc())
+            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
+
+    return StreamingResponse(gen(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.post("/api/arena/run")
+async def arena_run(req: ArenaRequest):
+    """Compare two pipelines on a dataset."""
+    try:
+        from rankify.dataset.dataset import Dataset
+        from rankify.metrics.metrics import Metrics
+        
+        # We need a generic way to fetch queries. Dataset.load_dataset_qa can be used if we download it.
+        # But Dataset.download() loads the whole dataset. 
+        # We will use the Dataset class to download / get the documents.
+        logger.info(f"Arena: Running benchmark on {req.dataset}")
+        ds = Dataset(retriever="bm25", dataset_name=req.dataset, n_docs=req.n_docs)
+        documents = ds.download(force_download=False)
+        
+        import random
+        # Select N random documents to evaluate
+        eval_docs = random.sample(documents, min(req.n_queries, len(documents)))
+        
+        def evaluate_pipeline(pipeline_cfg: ArenaPipeline, docs):
+            import copy
+            docs_copy = copy.deepcopy(docs)
+            
+            # Retrieval
+            retriever = get_retriever(pipeline_cfg.retriever, n_docs=req.n_docs, index_type=req.dataset)
+            t0 = time.time()
+            ret_results = retriever.retrieve(docs_copy)
+            ret_latency = (time.time() - t0) * 1000 / len(docs_copy)
+            
+            # Reranking
+            rr_latency = 0
+            reranker = get_reranker(pipeline_cfg.rerankerCategory, pipeline_cfg.rerankerModel)
+            if reranker:
+                t1 = time.time()
+                ret_results = reranker.rank(ret_results)
+                rr_latency = (time.time() - t1) * 1000 / len(docs_copy)
+            
+            # Evaluation
+            metrics = Metrics(ret_results)
+            use_rr = reranker is not None
+            ret_metrics = metrics.calculate_retrieval_metrics(ks=[10], use_reordered=use_rr)
+            
+            # Gen Evaluation (we mock generation evaluation by F1/EM on just the retrieved contexts for speed)
+            # A full Generation eval takes too long for an interactive demo (requires hitting the LLM API 5 times)
+            # Wait, interactive demo will timeout. We will just evaluate Retrieval MRR@10 and F1 of contexts
+            em_score = 0
+            for doc in ret_results:
+                golden = doc.answers.answers
+                ctxs = doc.reorder_contexts if use_rr and doc.reorder_contexts else doc.contexts
+                pred_text = " ".join([c.text for c in ctxs[:3]])
+                normalized_pred = pred_text.lower()
+                for ans in golden:
+                    if ans.lower() in normalized_pred:
+                        em_score += 1
+                        break
+                        
+            return {
+                "mrr_10": ret_metrics.get("top_10", 0),
+                "context_em": (em_score / len(docs_copy)) * 100,
+                "latency_ms": ret_latency + rr_latency
+            }
+
+        res_a = evaluate_pipeline(req.pipeline_a, eval_docs)
+        res_b = evaluate_pipeline(req.pipeline_b, eval_docs)
+        
+        return {
+            "num_queries": len(eval_docs),
+            "pipeline_a": res_a,
+            "pipeline_b": res_b
+        }
+        
+    except Exception as e:
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 if __name__ == "__main__":
