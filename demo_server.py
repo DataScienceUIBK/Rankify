@@ -539,9 +539,40 @@ async def arena_run(req: ArenaRequest):
                 mrr_10 = trec_metrics.get("mrr@10", 0) * 100
             except Exception as e:
                 logger.error(f"TREC Eval Error: {e}")
-                fallback_metrics = metrics.calculate_retrieval_metrics(ks=[10], use_reordered=use_rr)
-                ndcg_10 = fallback_metrics.get("ndcg_10", 0) * 100
-                mrr_10 = fallback_metrics.get("top_10", 0) * 100
+                ndcg_10, mrr_10 = 0, 0
+
+            # FALLBACK: If pyserini fails or returns 0.0 (happens on Python 3.13), 
+            # we use a manual calculation based on doc.has_answer.
+            if ndcg_10 == 0 and mrr_10 == 0:
+                logger.warning(f"TREC Eval returned 0.0 for {qrel_name}, using manual fallback.")
+                import math
+                mrr_sum = 0
+                ndcg_sum = 0
+                for doc in ret_results:
+                    contexts = doc.reorder_contexts if (use_rr and doc.reorder_contexts) else doc.contexts
+                    # MRR
+                    found_at = -1
+                    for i, ctx in enumerate(contexts[:10]):
+                        if getattr(ctx, "has_answer", False):
+                            found_at = i + 1
+                            break
+                    if found_at > 0: mrr_sum += 1.0 / found_at
+                    
+                    # NDCG (Binary)
+                    dcg = 0
+                    hits_rels = []
+                    for i, ctx in enumerate(contexts[:10]):
+                        rel = 1 if getattr(ctx, "has_answer", False) else 0
+                        hits_rels.append(rel)
+                        if rel: dcg += 1.0 / math.log2(i + 2)
+                    
+                    hits_rels.sort(reverse=True)
+                    idcg = sum(1.0 / math.log2(i + 2) for i, rel in enumerate(hits_rels) if rel)
+                    if idcg > 0: ndcg_sum += (dcg / idcg)
+                
+                n = len(ret_results)
+                mrr_10 = (mrr_sum / n) * 100 if n > 0 else 0
+                ndcg_10 = (ndcg_sum / n) * 100 if n > 0 else 0
             
             return {
                 "mrr_10": mrr_10,
