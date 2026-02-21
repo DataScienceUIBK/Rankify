@@ -137,7 +137,7 @@ export default function AgentPage() {
                                                                         </div>
                                                                     </div>
                                                                     <pre className="p-4 overflow-x-auto">
-                                                                        <code className="text-[13px] font-mono text-slate-300 leading-relaxed" {...props} />
+                                                                        <code className="text-[13px] font-mono text-slate-50 leading-relaxed" {...props} />
                                                                     </pre>
                                                                 </div>
                                                             ),
