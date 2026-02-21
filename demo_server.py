@@ -501,7 +501,8 @@ async def arena_run(req: ArenaRequest):
             docs_copy = copy.deepcopy(docs)
             
             # Retrieval
-            retriever = get_retriever(pipeline_cfg.retriever, n_docs=req.n_docs, index_type=req.dataset)
+            idx_type = "msmarco" if req.dataset == "msmarco" else "wiki"
+            retriever = get_retriever(pipeline_cfg.retriever, n_docs=req.n_docs, index_type=idx_type)
             t0 = time.time()
             ret_results = retriever.retrieve(docs_copy)
             ret_latency = (time.time() - t0) * 1000 / len(docs_copy)

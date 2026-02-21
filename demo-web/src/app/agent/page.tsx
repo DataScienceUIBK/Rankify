@@ -110,11 +110,43 @@ export default function AgentPage() {
                                     {m.role === "user" ? <User className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
                                 </div>
                                 <div className={`flex flex-col gap-2 max-w-[80%] ${m.role === "user" ? "items-end" : "items-start"}`}>
-                                    <div className={`p-4 rounded-2xl text-sm leading-relaxed ${m.role === "user" ? "bg-slate-100 text-slate-800 rounded-tr-sm" : "bg-white border border-slate-100 shadow-sm text-slate-700 rounded-tl-sm prose prose-sm max-w-none prose-slate"}`}>
+                                    <div className={`p-4 rounded-2xl text-sm leading-relaxed ${m.role === "user" ? "bg-slate-100 text-slate-800 rounded-tr-sm" : "bg-white border border-slate-100 shadow-sm text-slate-700 rounded-tl-sm"}`}>
                                         {m.content ? (
-                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                {m.content}
-                                            </ReactMarkdown>
+                                            <div className="flex flex-col gap-3">
+                                                <ReactMarkdown
+                                                    remarkPlugins={[remarkGfm]}
+                                                    components={{
+                                                        h1: ({ node, ...props }) => <h1 className="text-xl font-bold mt-4 mb-2 text-slate-900" {...props} />,
+                                                        h2: ({ node, ...props }) => <h2 className="text-lg font-bold mt-4 mb-2 text-slate-900" {...props} />,
+                                                        h3: ({ node, ...props }) => <h3 className="text-md font-bold mt-4 mb-2 text-slate-900" {...props} />,
+                                                        p: ({ node, ...props }) => <p className="mb-2 last:mb-0 leading-relaxed" {...props} />,
+                                                        ul: ({ node, ...props }) => <ul className="list-disc pl-5 mb-4 space-y-1" {...props} />,
+                                                        ol: ({ node, ...props }) => <ol className="list-decimal pl-5 mb-4 space-y-1" {...props} />,
+                                                        li: ({ node, ...props }) => <li className="pl-1" {...props} />,
+                                                        strong: ({ node, ...props }) => <strong className="font-bold text-slate-900" {...props} />,
+                                                        code: ({ node, inline, ...props }: any) =>
+                                                            inline ? (
+                                                                <code className="bg-slate-100 text-pink-600 px-1.5 py-0.5 rounded-md text-[13px] font-mono" {...props} />
+                                                            ) : (
+                                                                <div className="my-4 rounded-xl overflow-hidden border border-slate-200 bg-[#0d1117] shadow-sm">
+                                                                    <div className="flex items-center px-4 py-2 bg-slate-800 border-b border-slate-700">
+                                                                        <div className="flex gap-1.5">
+                                                                            <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
+                                                                            <div className="w-3 h-3 rounded-full bg-amber-500/80"></div>
+                                                                            <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <pre className="p-4 overflow-x-auto">
+                                                                        <code className="text-[13px] font-mono text-slate-300 leading-relaxed" {...props} />
+                                                                    </pre>
+                                                                </div>
+                                                            ),
+                                                        blockquote: ({ node, ...props }) => <blockquote className="border-l-4 border-indigo-200 pl-4 italic text-slate-600 my-4" {...props} />,
+                                                    }}
+                                                >
+                                                    {m.content}
+                                                </ReactMarkdown>
+                                            </div>
                                         ) : (
                                             <span className="animate-pulse text-slate-400">Thinking...</span>
                                         )}
