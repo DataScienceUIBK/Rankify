@@ -13,7 +13,10 @@ from pathlib import Path
 # Set up cache directory
 DEFAULT_CACHE_DIR = str(Path.home() / ".cache" / "rankify")
 os.environ.setdefault("RERANKING_CACHE_DIR", DEFAULT_CACHE_DIR)
-Path(os.environ["RERANKING_CACHE_DIR"]).mkdir(parents=True, exist_ok=True)
+try:
+    Path(os.environ["RERANKING_CACHE_DIR"]).mkdir(parents=True, exist_ok=True)
+except FileExistsError:
+    pass
 
 # Main pipeline interface
 from rankify.pipeline import (
