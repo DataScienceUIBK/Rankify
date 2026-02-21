@@ -438,6 +438,13 @@ async def agent_chat_stream(req: AgentRequest):
             if req.session_id not in _agent_cache:
                 logger.info(f"Initializing RankifyAgent for session {req.session_id}")
                 backend = "azure" if AZURE_KEY else "openai"
+                if backend == "azure":
+                    os.environ["AZURE_API_KEY"] = AZURE_KEY
+                    os.environ["AZURE_API_BASE"] = AZURE_ENDPOINT
+                    os.environ["AZURE_API_VERSION"] = AZURE_API_VER
+                    os.environ["AZURE_OPENAI_API_KEY"] = AZURE_KEY
+                    os.environ["AZURE_OPENAI_ENDPOINT"] = AZURE_ENDPOINT
+                    os.environ["AZURE_DEPLOYMENT_NAME"] = AZURE_DEPLOYMENT
                 _agent_cache[req.session_id] = RankifyAgent(backend=backend)
             
             agent = _agent_cache[req.session_id]
