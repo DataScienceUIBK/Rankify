@@ -124,3 +124,9 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Force all text inside code blocks to pure white, overriding any syntax-highlighting spans */
+.code-block-white,
+.code-block-white * {
+  color: #ffffff !important;
+}

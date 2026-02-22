@@ -479,85 +479,78 @@ async def agent_chat_stream(req: AgentRequest):
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
+
 @app.post("/api/arena/run")
 async def arena_run(req: ArenaRequest):
-    """Compare two pipelines on a dataset."""
+    """Compare two pipelines on a dataset using Rankify's BEIR evaluation."""
+    import copy, math, tempfile, os, requests
+
     try:
         from rankify.dataset.dataset import Dataset
         from rankify.metrics.metrics import Metrics
-        
-        # We need a generic way to fetch queries. Dataset.load_dataset_qa can be used if we download it.
-        # But Dataset.download() loads the whole dataset. 
-        # We will use the Dataset class to download / get the documents.
+
         logger.info(f"Arena: Running benchmark on {req.dataset}")
+
+        # ── QREL file download ──────────────────────────────────────────────
+        # Pyserini is broken on Python 3.13 (jar issue), so we download qrel
+        # files directly from the HuggingFace mirror that pyserini uses.
+        # pyserini dataset-id → HF path on castorini/anserini-tools
+        PYSERINI_QREL_URLS = {
+            "dl19":    "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/dl19-passage.trec",
+            "dl20":    "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/dl20-passage.trec",
+            "covid":   "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.covid.qrels",
+            "nfc":     "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.nfcorpus.qrels",
+            "touche":  "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.touche.qrels",
+            "dbpedia": "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.dbpedia.qrels",
+            "scifact": "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.scifact.qrels",
+            "signal":  "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.signal.qrels",
+            "news":    "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.news.qrels",
+            "robust04":"https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.robust04.qrels",
+            "arguana": "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.arguana.qrels",
+            "fever":   "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.fever.qrels",
+            "fiqa":    "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.fiqa.qrels",
+            "quora":   "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.quora.qrels",
+            "scidocs": "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.scidocs.qrels",
+        }
+
+        # Determine the short qrel key from dataset name  (e.g. "beir-covid" → "covid")
+        dataset_key = req.dataset
+        if req.dataset.startswith("beir-"):
+            dataset_key = req.dataset.split("-", 1)[1]
+
+        # Download qrel file (cached per run)
+        qrel_path = None
+        qrel_cache_dir = os.path.join(os.environ.get("RERANKING_CACHE_DIR", "./cache"), "qrels")
+        os.makedirs(qrel_cache_dir, exist_ok=True)
+        qrel_cache_file = os.path.join(qrel_cache_dir, f"{dataset_key}.qrel")
+
+        if os.path.exists(qrel_cache_file):
+            qrel_path = qrel_cache_file
+            logger.info(f"Using cached QREL: {qrel_cache_file}")
+        elif dataset_key in PYSERINI_QREL_URLS:
+            url = PYSERINI_QREL_URLS[dataset_key]
+            logger.info(f"Downloading QREL from {url}")
+            try:
+                resp = requests.get(url, timeout=30)
+                if resp.status_code == 200:
+                    with open(qrel_cache_file, "w") as f:
+                        f.write(resp.text)
+                    qrel_path = qrel_cache_file
+                    logger.info(f"QREL downloaded to {qrel_cache_file}, {len(resp.text)} chars")
+                else:
+                    logger.warning(f"QREL download failed: HTTP {resp.status_code}")
+            except Exception as e:
+                logger.warning(f"QREL download error: {e}")
+
+        # ── Dataset download ────────────────────────────────────────────────
         ds = Dataset(retriever="bm25", dataset_name=req.dataset, n_docs=req.n_docs)
         documents = ds.download(force_download=False)
-        
+        if not documents:
+            raise ValueError(f"Failed to load dataset: {req.dataset}")
+
         import random
-        # Select N random documents to evaluate
         eval_docs = random.sample(documents, min(req.n_queries, len(documents)))
-        
-        def evaluate_pipeline(pipeline_cfg: ArenaPipeline, docs):
-            import copy, math
-            docs_copy = copy.deepcopy(docs)
-            
-            # NOTE: BEIR datasets are already pre-retrieved with BM25 – the downloaded
-            # JSON files contain ranked contexts with `has_answer` set.
-            # Re-calling retriever.retrieve() would reset those contexts and lose the
-            # relevance labels, making all metrics come out as 0.
-            # So we skip re-retrieval; we only rerank if a category is configured.
-            ret_latency = 0.0
-            rr_latency = 0.0
-            ret_results = docs_copy
-            
-            # Reranking
-            reranker = get_reranker(pipeline_cfg.rerankerCategory, pipeline_cfg.rerankerModel)
-            if reranker:
-                t1 = time.time()
-                ret_results = reranker.rank(ret_results)
-                rr_latency = (time.time() - t1) * 1000 / max(1, len(docs_copy))
-            
-            # Evaluate: pure-Python NDCG@10 and MRR@10 using has_answer flags
-            use_rr = reranker is not None
-            mrr_sum = 0.0
-            ndcg_sum = 0.0
-            
-            for doc in ret_results:
-                contexts = doc.reorder_contexts if (use_rr and getattr(doc, "reorder_contexts", None)) else doc.contexts
-                if not contexts:
-                    continue
-                
-                # MRR@10
-                for i, ctx in enumerate(contexts[:10]):
-                    if getattr(ctx, "has_answer", False):
-                        mrr_sum += 1.0 / (i + 1)
-                        break
-                
-                # NDCG@10 (binary relevance)
-                dcg = 0.0
-                rels = []
-                for i, ctx in enumerate(contexts[:10]):
-                    rel = 1 if getattr(ctx, "has_answer", False) else 0
-                    rels.append(rel)
-                    if rel:
-                        dcg += 1.0 / math.log2(i + 2)
-                
-                rels_sorted = sorted(rels, reverse=True)
-                idcg = sum(r / math.log2(i + 2) for i, r in enumerate(rels_sorted) if r)
-                if idcg > 0:
-                    ndcg_sum += dcg / idcg
-            
-            n = len(ret_results)
-            mrr_10 = (mrr_sum / n) * 100 if n > 0 else 0.0
-            ndcg_10 = (ndcg_sum / n) * 100 if n > 0 else 0.0
-            
-            logger.info(f"Arena eval: n={n} NDCG@10={ndcg_10:.2f}% MRR@10={mrr_10:.2f}%")
-            
-            return {
-                "mrr_10": mrr_10,
-                "ndcg_10": ndcg_10,
-                "latency_ms": ret_latency + rr_latency
-            }
+        logger.info(f"Evaluating {len(eval_docs)} queries from {req.dataset}")
 
         res_a = evaluate_pipeline(req.pipeline_a, eval_docs)
         res_b = evaluate_pipeline(req.pipeline_b, eval_docs)
