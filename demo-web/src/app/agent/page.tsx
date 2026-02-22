@@ -136,8 +136,8 @@ export default function AgentPage() {
                                                                             <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
                                                                         </div>
                                                                     </div>
-                                                                    <pre className="p-4 overflow-x-auto bg-[#0d1117] m-0" style={{ color: '#ffffff' }}>
-                                                                        <code className="text-[13px] font-mono leading-relaxed whitespace-pre-wrap" style={{ color: '#ffffff' }} {...props} />
+                                                                    <pre className="code-block-white p-4 overflow-x-auto bg-[#0d1117] m-0">
+                                                                        <code className="text-[13px] font-mono leading-relaxed whitespace-pre-wrap" {...props} />
                                                                     </pre>
                                                                 </div>
                                                             ),
