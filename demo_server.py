@@ -564,20 +564,24 @@ async def arena_run(req: ArenaRequest):
             # (same as the Gradio demo but passing local file path to bypass Java download)
             metrics_obj = Metrics(docs_copy)
             trec = metrics_obj.calculate_trec_metrics(
-                ndcg_cuts=[10],
-                map_cuts=[10],
+                ndcg_cuts=[1, 5, 10],
+                map_cuts=[1, 5, 10],
                 mrr_cuts=[10],
                 qrel=qrel_path,        # local file path — framework checks os.path.exists()
                 use_reordered=use_rr,
             )
-            ndcg_10 = trec.get("ndcg@10", 0.0) * 100
-            mrr_10  = trec.get("mrr@10",  0.0) * 100
-
-            logger.info(
-                f"Pipeline [{pipeline_cfg.rerankerCategory}/{pipeline_cfg.rerankerModel}]: "
-                f"NDCG@10={ndcg_10:.2f}% MRR@10={mrr_10:.2f}%"
-            )
-            return {"mrr_10": mrr_10, "ndcg_10": ndcg_10, "latency_ms": rr_latency}
+            def pct(key): return round(trec.get(key, 0.0) * 100, 2)
+            logger.info(f"Pipeline [{pipeline_cfg.rerankerCategory}/{pipeline_cfg.rerankerModel}]: NDCG@10={pct('ndcg@10')}% MRR@10={pct('mrr@10')}%")
+            return {
+                "ndcg_1":    pct("ndcg@1"),
+                "ndcg_5":    pct("ndcg@5"),
+                "ndcg_10":   pct("ndcg@10"),
+                "map_1":     pct("map@1"),
+                "map_5":     pct("map@5"),
+                "map_10":    pct("map@10"),
+                "mrr_10":    pct("mrr@10"),
+                "latency_ms": rr_latency,
+            }
 
         res_a = evaluate_pipeline(req.pipeline_a, eval_docs)
         res_b = evaluate_pipeline(req.pipeline_b, eval_docs)
