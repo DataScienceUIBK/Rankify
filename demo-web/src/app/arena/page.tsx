@@ -157,11 +157,10 @@ export default function ArenaPage() {
                                 Pipeline A (Baseline)
                             </div>
                             <div className="flex flex-col gap-4">
-                                <Sel value={pipeA.retriever} onChange={() => { }} opts={[{ value: "bm25", label: "BM25 (Sparse Base)" }]} label="Retriever (Fixed by BEIR)" icon={Search} />
                                 <Sel
                                     value={pipeA.method}
                                     onChange={v => setPipeA(p => ({ ...p, method: v, model: v === "none" ? "none" : (RERANKERS_MAP[v as keyof typeof RERANKERS_MAP]?.[0] || "") }))}
-                                    opts={METHODS.map(m => ({ value: m, label: m === "none" ? "None (Base BM25 Only)" : m }))}
+                                    opts={METHODS.map(m => ({ value: m, label: m === "none" ? "None (BM25 baseline only)" : m }))}
                                     label="Reranking Method"
                                     icon={ListTree}
                                 />
@@ -184,11 +183,10 @@ export default function ArenaPage() {
                                 Pipeline B (Challenger)
                             </div>
                             <div className="flex flex-col gap-4">
-                                <Sel value={pipeB.retriever} onChange={() => { }} opts={[{ value: "bm25", label: "BM25 (Sparse Base)" }]} label="Retriever (Fixed by BEIR)" icon={Search} />
                                 <Sel
                                     value={pipeB.method}
                                     onChange={v => setPipeB(p => ({ ...p, method: v, model: v === "none" ? "none" : (RERANKERS_MAP[v as keyof typeof RERANKERS_MAP]?.[0] || "") }))}
-                                    opts={METHODS.map(m => ({ value: m, label: m === "none" ? "None (Base BM25 Only)" : m }))}
+                                    opts={METHODS.map(m => ({ value: m, label: m === "none" ? "None (BM25 baseline only)" : m }))}
                                     label="Reranking Method"
                                     icon={ListTree}
                                 />
