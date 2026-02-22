@@ -482,67 +482,118 @@ async def agent_chat_stream(req: AgentRequest):
 
 @app.post("/api/arena/run")
 async def arena_run(req: ArenaRequest):
-    """Compare two pipelines on a dataset using Rankify's BEIR evaluation."""
-    import copy, math, tempfile, os, requests
+    """Compare two pipelines on a BEIR dataset using proper TREC NDCG/MRR."""
+    import copy, math, os, requests
+
+    # Public QREL URLs from castorini/anserini-tools (verified HTTP 200, no auth needed)
+    # QREL format per line: query_id 0 doc_id relevance_score
+    ANSERINI_BASE = "https://raw.githubusercontent.com/castorini/anserini-tools/master/topics-and-qrels/"
+    QREL_URLS = {
+        "dl19":    ANSERINI_BASE + "qrels.dl19-passage.txt",
+        "dl20":    ANSERINI_BASE + "qrels.dl20-passage.txt",
+        "covid":   ANSERINI_BASE + "qrels.beir-v1.0.0-trec-covid.test.txt",
+        "nfc":     ANSERINI_BASE + "qrels.beir-v1.0.0-nfcorpus.test.txt",
+        "touche":  ANSERINI_BASE + "qrels.beir-v1.0.0-webis-touche2020.test.txt",
+        "dbpedia": ANSERINI_BASE + "qrels.beir-v1.0.0-dbpedia-entity.test.txt",
+        "scifact": ANSERINI_BASE + "qrels.beir-v1.0.0-scifact.test.txt",
+        "signal":  ANSERINI_BASE + "qrels.beir-v1.0.0-signal1m.test.txt",
+        "news":    ANSERINI_BASE + "qrels.beir-v1.0.0-trec-news.test.txt",
+        "robust04":ANSERINI_BASE + "qrels.beir-v1.0.0-robust04.test.txt",
+        "arguana": ANSERINI_BASE + "qrels.beir-v1.0.0-arguana.test.txt",
+        "fever":   ANSERINI_BASE + "qrels.beir-v1.0.0-fever.test.txt",
+        "fiqa":    ANSERINI_BASE + "qrels.beir-v1.0.0-fiqa.test.txt",
+        "quora":   ANSERINI_BASE + "qrels.beir-v1.0.0-quora.test.txt",
+        "scidocs": ANSERINI_BASE + "qrels.beir-v1.0.0-scidocs.test.txt",
+    }
+
+    def load_qrel(text: str) -> dict:
+        """Parse QREL text into {query_id: {doc_id: relevance}} dict."""
+        qrels: dict = {}
+        for line in text.strip().splitlines():
+            parts = line.split()
+            if len(parts) < 4:
+                continue
+            qid, did, rel = parts[0], parts[2], int(float(parts[3]))
+            qrels.setdefault(qid, {})[did] = rel
+        return qrels
+
+    def compute_ndcg_mrr(docs, qrels: dict, use_rr: bool, k: int = 10):
+        """Compute NDCG@k and MRR@k using graded QREL relevance judgments."""
+        ndcg_sum, mrr_sum, n = 0.0, 0.0, 0
+        for doc in docs:
+            qid = str(doc.id)
+            if qid not in qrels:
+                continue  # No judgments for this query
+
+            q_rels = qrels[qid]
+            ctxs = (
+                doc.reorder_contexts
+                if (use_rr and getattr(doc, "reorder_contexts", None))
+                else doc.contexts
+            )
+            if not ctxs:
+                continue
+
+            top_k = ctxs[:k]
+            rels = [q_rels.get(str(ctx.id), 0) for ctx in top_k]
+
+            # DCG (graded relevance)
+            dcg = sum(rel / math.log2(i + 2) for i, rel in enumerate(rels))
+            # IDCG (ideal ordering of all judged docs)
+            ideal_rels = sorted(q_rels.values(), reverse=True)[:k]
+            idcg = sum(rel / math.log2(i + 2) for i, rel in enumerate(ideal_rels))
+            if idcg > 0:
+                ndcg_sum += dcg / idcg
+
+            # MRR (first relevant doc with grade >= 1)
+            for i, rel in enumerate(rels):
+                if rel >= 1:
+                    mrr_sum += 1.0 / (i + 1)
+                    break
+
+            n += 1
+
+        if n == 0:
+            return 0.0, 0.0
+        return (ndcg_sum / n) * 100, (mrr_sum / n) * 100
 
     try:
         from rankify.dataset.dataset import Dataset
-        from rankify.metrics.metrics import Metrics
 
-        logger.info(f"Arena: Running benchmark on {req.dataset}")
+        logger.info(f"Arena eval start: {req.dataset}")
 
-        # ── QREL file download ──────────────────────────────────────────────
-        # Pyserini is broken on Python 3.13 (jar issue), so we download qrel
-        # files directly from the HuggingFace mirror that pyserini uses.
-        # pyserini dataset-id → HF path on castorini/anserini-tools
-        PYSERINI_QREL_URLS = {
-            "dl19":    "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/dl19-passage.trec",
-            "dl20":    "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/dl20-passage.trec",
-            "covid":   "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.covid.qrels",
-            "nfc":     "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.nfcorpus.qrels",
-            "touche":  "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.touche.qrels",
-            "dbpedia": "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.dbpedia.qrels",
-            "scifact": "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.scifact.qrels",
-            "signal":  "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.signal.qrels",
-            "news":    "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.news.qrels",
-            "robust04":"https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.robust04.qrels",
-            "arguana": "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.arguana.qrels",
-            "fever":   "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.fever.qrels",
-            "fiqa":    "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.fiqa.qrels",
-            "quora":   "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.quora.qrels",
-            "scidocs": "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.scidocs.qrels",
-        }
+        # Map dataset name to qrel key (e.g. "beir-covid" -> "covid")
+        dataset_key = req.dataset.split("-", 1)[1] if req.dataset.startswith("beir-") else req.dataset
 
-        # Determine the short qrel key from dataset name  (e.g. "beir-covid" → "covid")
-        dataset_key = req.dataset
-        if req.dataset.startswith("beir-"):
-            dataset_key = req.dataset.split("-", 1)[1]
-
-        # Download qrel file (cached per run)
-        qrel_path = None
-        qrel_cache_dir = os.path.join(os.environ.get("RERANKING_CACHE_DIR", "./cache"), "qrels")
+        # Download and cache QREL
+        qrels: dict = {}
+        qrel_cache_dir = os.path.join(os.getcwd(), "cache", "qrels")
         os.makedirs(qrel_cache_dir, exist_ok=True)
         qrel_cache_file = os.path.join(qrel_cache_dir, f"{dataset_key}.qrel")
 
         if os.path.exists(qrel_cache_file):
-            qrel_path = qrel_cache_file
-            logger.info(f"Using cached QREL: {qrel_cache_file}")
-        elif dataset_key in PYSERINI_QREL_URLS:
-            url = PYSERINI_QREL_URLS[dataset_key]
-            logger.info(f"Downloading QREL from {url}")
+            with open(qrel_cache_file) as f:
+                qrels = load_qrel(f.read())
+            logger.info(f"Loaded cached QREL: {len(qrels)} queries")
+        elif dataset_key in QREL_URLS:
+            url = QREL_URLS[dataset_key]
+            logger.info(f"Downloading QREL: {url}")
             try:
                 resp = requests.get(url, timeout=30)
                 if resp.status_code == 200:
                     with open(qrel_cache_file, "w") as f:
                         f.write(resp.text)
-                    qrel_path = qrel_cache_file
-                    logger.info(f"QREL downloaded to {qrel_cache_file}, {len(resp.text)} chars")
+                    qrels = load_qrel(resp.text)
+                    logger.info(f"QREL ready: {len(qrels)} queries, {sum(len(v) for v in qrels.values())} judgments")
                 else:
-                    logger.warning(f"QREL download failed: HTTP {resp.status_code}")
+                    logger.warning(f"QREL HTTP {resp.status_code}: {url}")
             except Exception as e:
-                logger.warning(f"QREL download error: {e}")
+                logger.warning(f"QREL error: {e}")
 
-        # ── Dataset download ────────────────────────────────────────────────
+        if not qrels:
+            logger.warning("No QREL — metrics will be 0")
+
+        # Load dataset (BEIR JSON has query_id in doc.id, passage_id in ctx.id)
         ds = Dataset(retriever="bm25", dataset_name=req.dataset, n_docs=req.n_docs)
         documents = ds.download(force_download=False)
         if not documents:
@@ -550,15 +601,17 @@ async def arena_run(req: ArenaRequest):
 
         import random
         eval_docs = random.sample(documents, min(req.n_queries, len(documents)))
-        logger.info(f"Evaluating {len(eval_docs)} queries from {req.dataset}")
 
-        # ── Per-pipeline evaluation ─────────────────────────────────────────
+        # Spot-check: verify doc IDs match QREL keys
+        sample_ids = [str(d.id) for d in eval_docs[:3]]
+        matched = [qid for qid in sample_ids if qid in qrels]
+        logger.info(f"Sample doc IDs: {sample_ids}, QREL matches: {matched}")
+
         def evaluate_pipeline(pipeline_cfg: ArenaPipeline, docs):
             docs_copy = copy.deepcopy(docs)
             rr_latency = 0.0
             ret_results = docs_copy
 
-            # Reranking (retrieval already done — BEIR datasets come pre-retrieved)
             reranker = get_reranker(pipeline_cfg.rerankerCategory, pipeline_cfg.rerankerModel)
             if reranker:
                 t1 = time.time()
@@ -566,65 +619,17 @@ async def arena_run(req: ArenaRequest):
                 rr_latency = (time.time() - t1) * 1000 / max(1, len(docs_copy))
 
             use_rr = reranker is not None
-
-            # ── Try Rankify's calculate_trec_metrics with downloaded QREL file ──
-            ndcg_10, mrr_10 = 0.0, 0.0
-            if qrel_path:
-                try:
-                    metrics_obj = Metrics(ret_results)
-                    trec = metrics_obj.calculate_trec_metrics(
-                        ndcg_cuts=[10],
-                        map_cuts=[10],
-                        mrr_cuts=[10],
-                        qrel=qrel_path,
-                        use_reordered=use_rr,
-                    )
-                    ndcg_10 = trec.get("ndcg@10", 0.0) * 100
-                    mrr_10  = trec.get("mrr@10",  0.0) * 100
-                    logger.info(f"TREC eval: NDCG@10={ndcg_10:.2f}% MRR@10={mrr_10:.2f}%")
-                except Exception as e:
-                    logger.warning(f"calculate_trec_metrics failed ({e}), using binary fallback")
-
-            # ── Pure-Python binary fallback using has_answer ─────────────────
-            if ndcg_10 == 0.0 and mrr_10 == 0.0:
-                mrr_sum, ndcg_sum = 0.0, 0.0
-                for doc in ret_results:
-                    ctxs = (
-                        doc.reorder_contexts
-                        if (use_rr and getattr(doc, "reorder_contexts", None))
-                        else doc.contexts
-                    )
-                    if not ctxs:
-                        continue
-                    for i, ctx in enumerate(ctxs[:10]):
-                        if getattr(ctx, "has_answer", False):
-                            mrr_sum += 1.0 / (i + 1)
-                            break
-                    dcg, rels = 0.0, []
-                    for i, ctx in enumerate(ctxs[:10]):
-                        rel = 1 if getattr(ctx, "has_answer", False) else 0
-                        rels.append(rel)
-                        if rel:
-                            dcg += 1.0 / math.log2(i + 2)
-                    idcg = sum(r / math.log2(i + 2) for i, r in enumerate(sorted(rels, reverse=True)) if r)
-                    if idcg > 0:
-                        ndcg_sum += dcg / idcg
-                n = len(ret_results)
-                mrr_10  = (mrr_sum  / n) * 100 if n > 0 else 0.0
-                ndcg_10 = (ndcg_sum / n) * 100 if n > 0 else 0.0
-                logger.info(f"Binary fallback: NDCG@10={ndcg_10:.2f}% MRR@10={mrr_10:.2f}%")
-
+            ndcg_10, mrr_10 = compute_ndcg_mrr(ret_results, qrels, use_rr, k=10)
+            logger.info(
+                f"Result [{pipeline_cfg.rerankerCategory}/{pipeline_cfg.rerankerModel}]: "
+                f"NDCG@10={ndcg_10:.2f}% MRR@10={mrr_10:.2f}%"
+            )
             return {"mrr_10": mrr_10, "ndcg_10": ndcg_10, "latency_ms": rr_latency}
 
         res_a = evaluate_pipeline(req.pipeline_a, eval_docs)
         res_b = evaluate_pipeline(req.pipeline_b, eval_docs)
-        
-        return {
-            "num_queries": len(eval_docs),
-            "pipeline_a": res_a,
-            "pipeline_b": res_b
-        }
-        
+        return {"num_queries": len(eval_docs), "pipeline_a": res_a, "pipeline_b": res_b}
+
     except Exception as e:
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
