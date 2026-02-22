@@ -482,11 +482,10 @@ async def agent_chat_stream(req: AgentRequest):
 
 @app.post("/api/arena/run")
 async def arena_run(req: ArenaRequest):
-    """Compare two pipelines on a BEIR dataset using proper TREC NDCG/MRR."""
-    import copy, math, os, requests
+    """Compare two BEIR pipelines using Rankify's Metrics.calculate_trec_metrics()."""
+    import copy, os, requests
 
-    # Public QREL URLs from castorini/anserini-tools (verified HTTP 200, no auth needed)
-    # QREL format per line: query_id 0 doc_id relevance_score
+    # Publicly accessible QREL files from castorini/anserini-tools (verified HTTP 200)
     ANSERINI_BASE = "https://raw.githubusercontent.com/castorini/anserini-tools/master/topics-and-qrels/"
     QREL_URLS = {
         "dl19":    ANSERINI_BASE + "qrels.dl19-passage.txt",
@@ -506,122 +505,76 @@ async def arena_run(req: ArenaRequest):
         "scidocs": ANSERINI_BASE + "qrels.beir-v1.0.0-scidocs.test.txt",
     }
 
-    def load_qrel(text: str) -> dict:
-        """Parse QREL text into {query_id: {doc_id: relevance}} dict."""
-        qrels: dict = {}
-        for line in text.strip().splitlines():
-            parts = line.split()
-            if len(parts) < 4:
-                continue
-            qid, did, rel = parts[0], parts[2], int(float(parts[3]))
-            qrels.setdefault(qid, {})[did] = rel
-        return qrels
-
-    def compute_ndcg_mrr(docs, qrels: dict, use_rr: bool, k: int = 10):
-        """Compute NDCG@k and MRR@k using graded QREL relevance judgments."""
-        ndcg_sum, mrr_sum, n = 0.0, 0.0, 0
-        for doc in docs:
-            qid = str(doc.id)
-            if qid not in qrels:
-                continue  # No judgments for this query
-
-            q_rels = qrels[qid]
-            ctxs = (
-                doc.reorder_contexts
-                if (use_rr and getattr(doc, "reorder_contexts", None))
-                else doc.contexts
-            )
-            if not ctxs:
-                continue
-
-            top_k = ctxs[:k]
-            rels = [q_rels.get(str(ctx.id), 0) for ctx in top_k]
-
-            # DCG (graded relevance)
-            dcg = sum(rel / math.log2(i + 2) for i, rel in enumerate(rels))
-            # IDCG (ideal ordering of all judged docs)
-            ideal_rels = sorted(q_rels.values(), reverse=True)[:k]
-            idcg = sum(rel / math.log2(i + 2) for i, rel in enumerate(ideal_rels))
-            if idcg > 0:
-                ndcg_sum += dcg / idcg
-
-            # MRR (first relevant doc with grade >= 1)
-            for i, rel in enumerate(rels):
-                if rel >= 1:
-                    mrr_sum += 1.0 / (i + 1)
-                    break
-
-            n += 1
-
-        if n == 0:
-            return 0.0, 0.0
-        return (ndcg_sum / n) * 100, (mrr_sum / n) * 100
-
     try:
         from rankify.dataset.dataset import Dataset
+        from rankify.metrics.metrics import Metrics
 
         logger.info(f"Arena eval start: {req.dataset}")
 
         # Map dataset name to qrel key (e.g. "beir-covid" -> "covid")
-        dataset_key = req.dataset.split("-", 1)[1] if req.dataset.startswith("beir-") else req.dataset
+        if req.dataset in ["dl19", "dl20"]:
+            qrel_key = req.dataset
+        else:
+            qrel_key = req.dataset.split("-", 1)[1] if req.dataset.startswith("beir-") else req.dataset
 
-        # Download and cache QREL
-        qrels: dict = {}
-        qrel_cache_dir = os.path.join(os.getcwd(), "cache", "qrels")
-        os.makedirs(qrel_cache_dir, exist_ok=True)
-        qrel_cache_file = os.path.join(qrel_cache_dir, f"{dataset_key}.qrel")
+        # Pre-download QREL file locally (Pyserini Java QREL download fails on this server)
+        # Metrics.calculate_trec_metrics() accepts a local file path via os.path.exists() check
+        qrel_dir = os.path.join(os.getcwd(), "cache", "qrels")
+        os.makedirs(qrel_dir, exist_ok=True)
+        qrel_path = os.path.join(qrel_dir, f"{qrel_key}.qrel")
 
-        if os.path.exists(qrel_cache_file):
-            with open(qrel_cache_file) as f:
-                qrels = load_qrel(f.read())
-            logger.info(f"Loaded cached QREL: {len(qrels)} queries")
-        elif dataset_key in QREL_URLS:
-            url = QREL_URLS[dataset_key]
+        if not os.path.exists(qrel_path) and qrel_key in QREL_URLS:
+            url = QREL_URLS[qrel_key]
             logger.info(f"Downloading QREL: {url}")
-            try:
-                resp = requests.get(url, timeout=30)
-                if resp.status_code == 200:
-                    with open(qrel_cache_file, "w") as f:
-                        f.write(resp.text)
-                    qrels = load_qrel(resp.text)
-                    logger.info(f"QREL ready: {len(qrels)} queries, {sum(len(v) for v in qrels.values())} judgments")
-                else:
-                    logger.warning(f"QREL HTTP {resp.status_code}: {url}")
-            except Exception as e:
-                logger.warning(f"QREL error: {e}")
+            resp = requests.get(url, timeout=30)
+            if resp.status_code == 200:
+                with open(qrel_path, "w") as f:
+                    f.write(resp.text)
+                logger.info(f"QREL saved: {qrel_path}")
+            else:
+                logger.warning(f"QREL download failed HTTP {resp.status_code}")
 
-        if not qrels:
-            logger.warning("No QREL — metrics will be 0")
+        if not os.path.exists(qrel_path):
+            raise ValueError(f"QREL file not available for dataset '{qrel_key}'")
 
-        # Load dataset (BEIR JSON has query_id in doc.id, passage_id in ctx.id)
+        # Download BEIR dataset (BM25 pre-retrieved, doc.id = query_id, ctx.id = passage_id)
         ds = Dataset(retriever="bm25", dataset_name=req.dataset, n_docs=req.n_docs)
-        documents = ds.download(force_download=False)
-        if not documents:
+        data = ds.download(force_download=False)
+        if not data:
             raise ValueError(f"Failed to load dataset: {req.dataset}")
 
         import random
-        eval_docs = random.sample(documents, min(req.n_queries, len(documents)))
-
-        # Spot-check: verify doc IDs match QREL keys
-        sample_ids = [str(d.id) for d in eval_docs[:3]]
-        matched = [qid for qid in sample_ids if qid in qrels]
-        logger.info(f"Sample doc IDs: {sample_ids}, QREL matches: {matched}")
+        eval_docs = random.sample(data, min(req.n_queries, len(data)))
+        logger.info(f"Evaluating {len(eval_docs)} queries")
 
         def evaluate_pipeline(pipeline_cfg: ArenaPipeline, docs):
             docs_copy = copy.deepcopy(docs)
             rr_latency = 0.0
-            ret_results = docs_copy
 
+            # Apply reranking if configured
             reranker = get_reranker(pipeline_cfg.rerankerCategory, pipeline_cfg.rerankerModel)
             if reranker:
                 t1 = time.time()
-                ret_results = reranker.rank(ret_results)
+                reranker.rank(docs_copy)
                 rr_latency = (time.time() - t1) * 1000 / max(1, len(docs_copy))
 
             use_rr = reranker is not None
-            ndcg_10, mrr_10 = compute_ndcg_mrr(ret_results, qrels, use_rr, k=10)
+
+            # Use Rankify's Metrics.calculate_trec_metrics() with pre-downloaded local QREL path
+            # (same as the Gradio demo but passing local file path to bypass Java download)
+            metrics_obj = Metrics(docs_copy)
+            trec = metrics_obj.calculate_trec_metrics(
+                ndcg_cuts=[10],
+                map_cuts=[10],
+                mrr_cuts=[10],
+                qrel=qrel_path,        # local file path — framework checks os.path.exists()
+                use_reordered=use_rr,
+            )
+            ndcg_10 = trec.get("ndcg@10", 0.0) * 100
+            mrr_10  = trec.get("mrr@10",  0.0) * 100
+
             logger.info(
-                f"Result [{pipeline_cfg.rerankerCategory}/{pipeline_cfg.rerankerModel}]: "
+                f"Pipeline [{pipeline_cfg.rerankerCategory}/{pipeline_cfg.rerankerModel}]: "
                 f"NDCG@10={ndcg_10:.2f}% MRR@10={mrr_10:.2f}%"
             )
             return {"mrr_10": mrr_10, "ndcg_10": ndcg_10, "latency_ms": rr_latency}
