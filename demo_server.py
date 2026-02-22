@@ -498,81 +498,60 @@ async def arena_run(req: ArenaRequest):
         eval_docs = random.sample(documents, min(req.n_queries, len(documents)))
         
         def evaluate_pipeline(pipeline_cfg: ArenaPipeline, docs):
-            import copy
+            import copy, math
             docs_copy = copy.deepcopy(docs)
             
-            # Retrieval
-            idx_type = "msmarco" if req.dataset == "msmarco" else "wiki"
-            retriever = get_retriever(pipeline_cfg.retriever, n_docs=req.n_docs, index_type=idx_type)
-            t0 = time.time()
-            ret_results = retriever.retrieve(docs_copy)
-            ret_latency = (time.time() - t0) * 1000 / len(docs_copy)
+            # NOTE: BEIR datasets are already pre-retrieved with BM25 – the downloaded
+            # JSON files contain ranked contexts with `has_answer` set.
+            # Re-calling retriever.retrieve() would reset those contexts and lose the
+            # relevance labels, making all metrics come out as 0.
+            # So we skip re-retrieval; we only rerank if a category is configured.
+            ret_latency = 0.0
+            rr_latency = 0.0
+            ret_results = docs_copy
             
             # Reranking
-            rr_latency = 0
             reranker = get_reranker(pipeline_cfg.rerankerCategory, pipeline_cfg.rerankerModel)
             if reranker:
                 t1 = time.time()
                 ret_results = reranker.rank(ret_results)
-                rr_latency = (time.time() - t1) * 1000 / len(docs_copy)
+                rr_latency = (time.time() - t1) * 1000 / max(1, len(docs_copy))
             
-            # Evaluation - use true TREC evaluation as per BEIR standards
-            metrics = Metrics(ret_results)
+            # Evaluate: pure-Python NDCG@10 and MRR@10 using has_answer flags
             use_rr = reranker is not None
+            mrr_sum = 0.0
+            ndcg_sum = 0.0
             
-            # Formulate the correct qrel name for rankify
-            qrel_name = req.dataset
-            if req.dataset.startswith("beir-"):
-                qrel_name = req.dataset.split("-")[1]
-            elif req.dataset in ["nq-dev", "msmarco", "triviaqa"]:
-                qrel_name = req.dataset
+            for doc in ret_results:
+                contexts = doc.reorder_contexts if (use_rr and getattr(doc, "reorder_contexts", None)) else doc.contexts
+                if not contexts:
+                    continue
                 
-            try:
-                trec_metrics = metrics.calculate_trec_metrics(
-                    ndcg_cuts=[10], 
-                    map_cuts=[10], 
-                    mrr_cuts=[10], 
-                    qrel=qrel_name, 
-                    use_reordered=use_rr
-                )
-                ndcg_10 = trec_metrics.get("ndcg@10", 0) * 100
-                mrr_10 = trec_metrics.get("mrr@10", 0) * 100
-            except Exception as e:
-                logger.error(f"TREC Eval Error: {e}")
-                ndcg_10, mrr_10 = 0, 0
-
-            # FALLBACK: If pyserini fails or returns 0.0 (happens on Python 3.13), 
-            # we use a manual calculation based on doc.has_answer.
-            if ndcg_10 == 0 and mrr_10 == 0:
-                logger.warning(f"TREC Eval returned 0.0 for {qrel_name}, using manual fallback.")
-                import math
-                mrr_sum = 0
-                ndcg_sum = 0
-                for doc in ret_results:
-                    contexts = doc.reorder_contexts if (use_rr and doc.reorder_contexts) else doc.contexts
-                    # MRR
-                    found_at = -1
-                    for i, ctx in enumerate(contexts[:10]):
-                        if getattr(ctx, "has_answer", False):
-                            found_at = i + 1
-                            break
-                    if found_at > 0: mrr_sum += 1.0 / found_at
-                    
-                    # NDCG (Binary)
-                    dcg = 0
-                    hits_rels = []
-                    for i, ctx in enumerate(contexts[:10]):
-                        rel = 1 if getattr(ctx, "has_answer", False) else 0
-                        hits_rels.append(rel)
-                        if rel: dcg += 1.0 / math.log2(i + 2)
-                    
-                    hits_rels.sort(reverse=True)
-                    idcg = sum(1.0 / math.log2(i + 2) for i, rel in enumerate(hits_rels) if rel)
-                    if idcg > 0: ndcg_sum += (dcg / idcg)
+                # MRR@10
+                for i, ctx in enumerate(contexts[:10]):
+                    if getattr(ctx, "has_answer", False):
+                        mrr_sum += 1.0 / (i + 1)
+                        break
                 
-                n = len(ret_results)
-                mrr_10 = (mrr_sum / n) * 100 if n > 0 else 0
-                ndcg_10 = (ndcg_sum / n) * 100 if n > 0 else 0
+                # NDCG@10 (binary relevance)
+                dcg = 0.0
+                rels = []
+                for i, ctx in enumerate(contexts[:10]):
+                    rel = 1 if getattr(ctx, "has_answer", False) else 0
+                    rels.append(rel)
+                    if rel:
+                        dcg += 1.0 / math.log2(i + 2)
+                
+                rels_sorted = sorted(rels, reverse=True)
+                idcg = sum(r / math.log2(i + 2) for i, r in enumerate(rels_sorted) if r)
+                if idcg > 0:
+                    ndcg_sum += dcg / idcg
+            
+            n = len(ret_results)
+            mrr_10 = (mrr_sum / n) * 100 if n > 0 else 0.0
+            ndcg_10 = (ndcg_sum / n) * 100 if n > 0 else 0.0
+            
+            logger.info(f"Arena eval: n={n} NDCG@10={ndcg_10:.2f}% MRR@10={mrr_10:.2f}%")
             
             return {
                 "mrr_10": mrr_10,
