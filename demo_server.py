@@ -552,6 +552,70 @@ async def arena_run(req: ArenaRequest):
         eval_docs = random.sample(documents, min(req.n_queries, len(documents)))
         logger.info(f"Evaluating {len(eval_docs)} queries from {req.dataset}")
 
+        # ── Per-pipeline evaluation ─────────────────────────────────────────
+        def evaluate_pipeline(pipeline_cfg: ArenaPipeline, docs):
+            docs_copy = copy.deepcopy(docs)
+            rr_latency = 0.0
+            ret_results = docs_copy
+
+            # Reranking (retrieval already done — BEIR datasets come pre-retrieved)
+            reranker = get_reranker(pipeline_cfg.rerankerCategory, pipeline_cfg.rerankerModel)
+            if reranker:
+                t1 = time.time()
+                ret_results = reranker.rank(ret_results)
+                rr_latency = (time.time() - t1) * 1000 / max(1, len(docs_copy))
+
+            use_rr = reranker is not None
+
+            # ── Try Rankify's calculate_trec_metrics with downloaded QREL file ──
+            ndcg_10, mrr_10 = 0.0, 0.0
+            if qrel_path:
+                try:
+                    metrics_obj = Metrics(ret_results)
+                    trec = metrics_obj.calculate_trec_metrics(
+                        ndcg_cuts=[10],
+                        map_cuts=[10],
+                        mrr_cuts=[10],
+                        qrel=qrel_path,
+                        use_reordered=use_rr,
+                    )
+                    ndcg_10 = trec.get("ndcg@10", 0.0) * 100
+                    mrr_10  = trec.get("mrr@10",  0.0) * 100
+                    logger.info(f"TREC eval: NDCG@10={ndcg_10:.2f}% MRR@10={mrr_10:.2f}%")
+                except Exception as e:
+                    logger.warning(f"calculate_trec_metrics failed ({e}), using binary fallback")
+
+            # ── Pure-Python binary fallback using has_answer ─────────────────
+            if ndcg_10 == 0.0 and mrr_10 == 0.0:
+                mrr_sum, ndcg_sum = 0.0, 0.0
+                for doc in ret_results:
+                    ctxs = (
+                        doc.reorder_contexts
+                        if (use_rr and getattr(doc, "reorder_contexts", None))
+                        else doc.contexts
+                    )
+                    if not ctxs:
+                        continue
+                    for i, ctx in enumerate(ctxs[:10]):
+                        if getattr(ctx, "has_answer", False):
+                            mrr_sum += 1.0 / (i + 1)
+                            break
+                    dcg, rels = 0.0, []
+                    for i, ctx in enumerate(ctxs[:10]):
+                        rel = 1 if getattr(ctx, "has_answer", False) else 0
+                        rels.append(rel)
+                        if rel:
+                            dcg += 1.0 / math.log2(i + 2)
+                    idcg = sum(r / math.log2(i + 2) for i, r in enumerate(sorted(rels, reverse=True)) if r)
+                    if idcg > 0:
+                        ndcg_sum += dcg / idcg
+                n = len(ret_results)
+                mrr_10  = (mrr_sum  / n) * 100 if n > 0 else 0.0
+                ndcg_10 = (ndcg_sum / n) * 100 if n > 0 else 0.0
+                logger.info(f"Binary fallback: NDCG@10={ndcg_10:.2f}% MRR@10={mrr_10:.2f}%")
+
+            return {"mrr_10": mrr_10, "ndcg_10": ndcg_10, "latency_ms": rr_latency}
+
         res_a = evaluate_pipeline(req.pipeline_a, eval_docs)
         res_b = evaluate_pipeline(req.pipeline_b, eval_docs)
         
