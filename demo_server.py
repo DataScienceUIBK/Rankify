@@ -482,149 +482,111 @@ async def agent_chat_stream(req: AgentRequest):
 
 @app.post("/api/arena/run")
 async def arena_run(req: ArenaRequest):
-    """Compare two pipelines on a dataset using Rankify's BEIR evaluation."""
-    import copy, math, tempfile, os, requests
+    """Compare two BEIR pipelines using Rankify's Metrics.calculate_trec_metrics()."""
+    import copy, os, requests
+
+    # Publicly accessible QREL files from castorini/anserini-tools (verified HTTP 200)
+    ANSERINI_BASE = "https://raw.githubusercontent.com/castorini/anserini-tools/master/topics-and-qrels/"
+    QREL_URLS = {
+        "dl19":    ANSERINI_BASE + "qrels.dl19-passage.txt",
+        "dl20":    ANSERINI_BASE + "qrels.dl20-passage.txt",
+        "covid":   ANSERINI_BASE + "qrels.beir-v1.0.0-trec-covid.test.txt",
+        "nfc":     ANSERINI_BASE + "qrels.beir-v1.0.0-nfcorpus.test.txt",
+        "touche":  ANSERINI_BASE + "qrels.beir-v1.0.0-webis-touche2020.test.txt",
+        "dbpedia": ANSERINI_BASE + "qrels.beir-v1.0.0-dbpedia-entity.test.txt",
+        "scifact": ANSERINI_BASE + "qrels.beir-v1.0.0-scifact.test.txt",
+        "signal":  ANSERINI_BASE + "qrels.beir-v1.0.0-signal1m.test.txt",
+        "news":    ANSERINI_BASE + "qrels.beir-v1.0.0-trec-news.test.txt",
+        "robust04":ANSERINI_BASE + "qrels.beir-v1.0.0-robust04.test.txt",
+        "arguana": ANSERINI_BASE + "qrels.beir-v1.0.0-arguana.test.txt",
+        "fever":   ANSERINI_BASE + "qrels.beir-v1.0.0-fever.test.txt",
+        "fiqa":    ANSERINI_BASE + "qrels.beir-v1.0.0-fiqa.test.txt",
+        "quora":   ANSERINI_BASE + "qrels.beir-v1.0.0-quora.test.txt",
+        "scidocs": ANSERINI_BASE + "qrels.beir-v1.0.0-scidocs.test.txt",
+    }
 
     try:
         from rankify.dataset.dataset import Dataset
         from rankify.metrics.metrics import Metrics
 
-        logger.info(f"Arena: Running benchmark on {req.dataset}")
+        logger.info(f"Arena eval start: {req.dataset}")
 
-        # ── QREL file download ──────────────────────────────────────────────
-        # Pyserini is broken on Python 3.13 (jar issue), so we download qrel
-        # files directly from the HuggingFace mirror that pyserini uses.
-        # pyserini dataset-id → HF path on castorini/anserini-tools
-        PYSERINI_QREL_URLS = {
-            "dl19":    "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/dl19-passage.trec",
-            "dl20":    "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/dl20-passage.trec",
-            "covid":   "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.covid.qrels",
-            "nfc":     "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.nfcorpus.qrels",
-            "touche":  "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.touche.qrels",
-            "dbpedia": "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.dbpedia.qrels",
-            "scifact": "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.scifact.qrels",
-            "signal":  "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.signal.qrels",
-            "news":    "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.news.qrels",
-            "robust04":"https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.robust04.qrels",
-            "arguana": "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.arguana.qrels",
-            "fever":   "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.fever.qrels",
-            "fiqa":    "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.fiqa.qrels",
-            "quora":   "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.quora.qrels",
-            "scidocs": "https://huggingface.co/datasets/castorini/beir-qrels/resolve/main/test.scidocs.qrels",
-        }
+        # Map dataset name to qrel key (e.g. "beir-covid" -> "covid")
+        if req.dataset in ["dl19", "dl20"]:
+            qrel_key = req.dataset
+        else:
+            qrel_key = req.dataset.split("-", 1)[1] if req.dataset.startswith("beir-") else req.dataset
 
-        # Determine the short qrel key from dataset name  (e.g. "beir-covid" → "covid")
-        dataset_key = req.dataset
-        if req.dataset.startswith("beir-"):
-            dataset_key = req.dataset.split("-", 1)[1]
+        # Pre-download QREL file locally (Pyserini Java QREL download fails on this server)
+        # Metrics.calculate_trec_metrics() accepts a local file path via os.path.exists() check
+        qrel_dir = os.path.join(os.getcwd(), "cache", "qrels")
+        os.makedirs(qrel_dir, exist_ok=True)
+        qrel_path = os.path.join(qrel_dir, f"{qrel_key}.qrel")
 
-        # Download qrel file (cached per run)
-        qrel_path = None
-        qrel_cache_dir = os.path.join(os.environ.get("RERANKING_CACHE_DIR", "./cache"), "qrels")
-        os.makedirs(qrel_cache_dir, exist_ok=True)
-        qrel_cache_file = os.path.join(qrel_cache_dir, f"{dataset_key}.qrel")
+        if not os.path.exists(qrel_path) and qrel_key in QREL_URLS:
+            url = QREL_URLS[qrel_key]
+            logger.info(f"Downloading QREL: {url}")
+            resp = requests.get(url, timeout=30)
+            if resp.status_code == 200:
+                with open(qrel_path, "w") as f:
+                    f.write(resp.text)
+                logger.info(f"QREL saved: {qrel_path}")
+            else:
+                logger.warning(f"QREL download failed HTTP {resp.status_code}")
 
-        if os.path.exists(qrel_cache_file):
-            qrel_path = qrel_cache_file
-            logger.info(f"Using cached QREL: {qrel_cache_file}")
-        elif dataset_key in PYSERINI_QREL_URLS:
-            url = PYSERINI_QREL_URLS[dataset_key]
-            logger.info(f"Downloading QREL from {url}")
-            try:
-                resp = requests.get(url, timeout=30)
-                if resp.status_code == 200:
-                    with open(qrel_cache_file, "w") as f:
-                        f.write(resp.text)
-                    qrel_path = qrel_cache_file
-                    logger.info(f"QREL downloaded to {qrel_cache_file}, {len(resp.text)} chars")
-                else:
-                    logger.warning(f"QREL download failed: HTTP {resp.status_code}")
-            except Exception as e:
-                logger.warning(f"QREL download error: {e}")
+        if not os.path.exists(qrel_path):
+            raise ValueError(f"QREL file not available for dataset '{qrel_key}'")
 
-        # ── Dataset download ────────────────────────────────────────────────
+        # Download BEIR dataset (BM25 pre-retrieved, doc.id = query_id, ctx.id = passage_id)
         ds = Dataset(retriever="bm25", dataset_name=req.dataset, n_docs=req.n_docs)
-        documents = ds.download(force_download=False)
-        if not documents:
+        data = ds.download(force_download=False)
+        if not data:
             raise ValueError(f"Failed to load dataset: {req.dataset}")
 
         import random
-        eval_docs = random.sample(documents, min(req.n_queries, len(documents)))
-        logger.info(f"Evaluating {len(eval_docs)} queries from {req.dataset}")
+        eval_docs = random.sample(data, min(req.n_queries, len(data)))
+        logger.info(f"Evaluating {len(eval_docs)} queries")
 
-        # ── Per-pipeline evaluation ─────────────────────────────────────────
         def evaluate_pipeline(pipeline_cfg: ArenaPipeline, docs):
             docs_copy = copy.deepcopy(docs)
             rr_latency = 0.0
-            ret_results = docs_copy
 
-            # Reranking (retrieval already done — BEIR datasets come pre-retrieved)
+            # Apply reranking if configured
             reranker = get_reranker(pipeline_cfg.rerankerCategory, pipeline_cfg.rerankerModel)
             if reranker:
                 t1 = time.time()
-                ret_results = reranker.rank(ret_results)
+                reranker.rank(docs_copy)
                 rr_latency = (time.time() - t1) * 1000 / max(1, len(docs_copy))
 
             use_rr = reranker is not None
 
-            # ── Try Rankify's calculate_trec_metrics with downloaded QREL file ──
-            ndcg_10, mrr_10 = 0.0, 0.0
-            if qrel_path:
-                try:
-                    metrics_obj = Metrics(ret_results)
-                    trec = metrics_obj.calculate_trec_metrics(
-                        ndcg_cuts=[10],
-                        map_cuts=[10],
-                        mrr_cuts=[10],
-                        qrel=qrel_path,
-                        use_reordered=use_rr,
-                    )
-                    ndcg_10 = trec.get("ndcg@10", 0.0) * 100
-                    mrr_10  = trec.get("mrr@10",  0.0) * 100
-                    logger.info(f"TREC eval: NDCG@10={ndcg_10:.2f}% MRR@10={mrr_10:.2f}%")
-                except Exception as e:
-                    logger.warning(f"calculate_trec_metrics failed ({e}), using binary fallback")
-
-            # ── Pure-Python binary fallback using has_answer ─────────────────
-            if ndcg_10 == 0.0 and mrr_10 == 0.0:
-                mrr_sum, ndcg_sum = 0.0, 0.0
-                for doc in ret_results:
-                    ctxs = (
-                        doc.reorder_contexts
-                        if (use_rr and getattr(doc, "reorder_contexts", None))
-                        else doc.contexts
-                    )
-                    if not ctxs:
-                        continue
-                    for i, ctx in enumerate(ctxs[:10]):
-                        if getattr(ctx, "has_answer", False):
-                            mrr_sum += 1.0 / (i + 1)
-                            break
-                    dcg, rels = 0.0, []
-                    for i, ctx in enumerate(ctxs[:10]):
-                        rel = 1 if getattr(ctx, "has_answer", False) else 0
-                        rels.append(rel)
-                        if rel:
-                            dcg += 1.0 / math.log2(i + 2)
-                    idcg = sum(r / math.log2(i + 2) for i, r in enumerate(sorted(rels, reverse=True)) if r)
-                    if idcg > 0:
-                        ndcg_sum += dcg / idcg
-                n = len(ret_results)
-                mrr_10  = (mrr_sum  / n) * 100 if n > 0 else 0.0
-                ndcg_10 = (ndcg_sum / n) * 100 if n > 0 else 0.0
-                logger.info(f"Binary fallback: NDCG@10={ndcg_10:.2f}% MRR@10={mrr_10:.2f}%")
-
-            return {"mrr_10": mrr_10, "ndcg_10": ndcg_10, "latency_ms": rr_latency}
+            # Use Rankify's Metrics.calculate_trec_metrics() with pre-downloaded local QREL path
+            # (same as the Gradio demo but passing local file path to bypass Java download)
+            metrics_obj = Metrics(docs_copy)
+            trec = metrics_obj.calculate_trec_metrics(
+                ndcg_cuts=[1, 5, 10],
+                map_cuts=[1, 5, 10],
+                mrr_cuts=[10],
+                qrel=qrel_path,        # local file path — framework checks os.path.exists()
+                use_reordered=use_rr,
+            )
+            def pct(key): return round(trec.get(key, 0.0) * 100, 2)
+            logger.info(f"Pipeline [{pipeline_cfg.rerankerCategory}/{pipeline_cfg.rerankerModel}]: NDCG@10={pct('ndcg@10')}% MRR@10={pct('mrr@10')}%")
+            return {
+                "ndcg_1":    pct("ndcg@1"),
+                "ndcg_5":    pct("ndcg@5"),
+                "ndcg_10":   pct("ndcg@10"),
+                "map_1":     pct("map@1"),
+                "map_5":     pct("map@5"),
+                "map_10":    pct("map@10"),
+                "mrr_10":    pct("mrr@10"),
+                "latency_ms": rr_latency,
+            }
 
         res_a = evaluate_pipeline(req.pipeline_a, eval_docs)
         res_b = evaluate_pipeline(req.pipeline_b, eval_docs)
-        
-        return {
-            "num_queries": len(eval_docs),
-            "pipeline_a": res_a,
-            "pipeline_b": res_b
-        }
-        
+        return {"num_queries": len(eval_docs), "pipeline_a": res_a, "pipeline_b": res_b}
+
     except Exception as e:
         logger.error(traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))

@@ -220,8 +220,8 @@ export default function ArenaPage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Result Card A */}
-                            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-6 relative overflow-hidden">
-                                {results.pipeline_a.mrr_10 > results.pipeline_b.mrr_10 && <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500 transform rotate-45 translate-x-8 -translate-y-8" />}
+                            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-4 relative overflow-hidden">
+                                {results.pipeline_a.ndcg_10 > results.pipeline_b.ndcg_10 && <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500 transform rotate-45 translate-x-8 -translate-y-8" />}
 
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-lg">A</div>
@@ -230,16 +230,31 @@ export default function ArenaPage() {
                                         <div className="text-xs text-slate-500">BM25 {pipeA.method !== "none" ? `+ ${pipeA.method} (${pipeA.model})` : "(No Reranker)"}</div>
                                     </div>
                                 </div>
-                                <div className="flex flex-col gap-4 mt-2">
-                                    <MetricBar label="NDCG@10 (Ranking Quality)" value={results.pipeline_a.ndcg_10} max={100} format="percent" />
+
+                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Ranking Quality</div>
+                                <div className="flex flex-col gap-3">
+                                    <MetricBar label="NDCG@1" value={results.pipeline_a.ndcg_1} max={100} format="percent" />
+                                    <MetricBar label="NDCG@5" value={results.pipeline_a.ndcg_5} max={100} format="percent" />
+                                    <MetricBar label="NDCG@10" value={results.pipeline_a.ndcg_10} max={100} format="percent" />
+                                </div>
+
+                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Mean Average Precision</div>
+                                <div className="flex flex-col gap-3">
+                                    <MetricBar label="MAP@1" value={results.pipeline_a.map_1} max={100} format="percent" />
+                                    <MetricBar label="MAP@5" value={results.pipeline_a.map_5} max={100} format="percent" />
+                                    <MetricBar label="MAP@10" value={results.pipeline_a.map_10} max={100} format="percent" />
+                                </div>
+
+                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Relevance & Efficiency</div>
+                                <div className="flex flex-col gap-3">
                                     <MetricBar label="MRR@10 (Top Relevance)" value={results.pipeline_a.mrr_10} max={100} format="percent" />
-                                    <MetricBar label="Avg End-to-End Latency" value={results.pipeline_a.latency_ms} max={3000} format="ms" />
+                                    <MetricBar label="Avg Reranking Latency" value={results.pipeline_a.latency_ms} max={3000} format="ms" />
                                 </div>
                             </div>
 
                             {/* Result Card B */}
-                            <div className="bg-white p-6 rounded-2xl border border-indigo-200 shadow-md flex flex-col gap-6 relative overflow-hidden ring-1 ring-indigo-500 ring-opacity-20">
-                                {results.pipeline_b.mrr_10 > results.pipeline_a.mrr_10 && <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500 transform rotate-45 translate-x-8 -translate-y-8 flex items-end justify-center pb-1"><Trophy className="w-4 h-4 text-white -rotate-45" /></div>}
+                            <div className="bg-white p-6 rounded-2xl border border-indigo-200 shadow-md flex flex-col gap-4 relative overflow-hidden ring-1 ring-indigo-500 ring-opacity-20">
+                                {results.pipeline_b.ndcg_10 > results.pipeline_a.ndcg_10 && <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-500 transform rotate-45 translate-x-8 -translate-y-8 flex items-end justify-center pb-1"><Trophy className="w-4 h-4 text-white -rotate-45" /></div>}
 
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-lg">B</div>
@@ -248,14 +263,30 @@ export default function ArenaPage() {
                                         <div className="text-xs text-slate-500">BM25 {pipeB.method !== "none" ? `+ ${pipeB.method} (${pipeB.model})` : "(No Reranker)"}</div>
                                     </div>
                                 </div>
-                                <div className="flex flex-col gap-4 mt-2">
-                                    <MetricBar label="NDCG@10 (Ranking Quality)" value={results.pipeline_b.ndcg_10} max={100} format="percent" />
+
+                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Ranking Quality</div>
+                                <div className="flex flex-col gap-3">
+                                    <MetricBar label="NDCG@1" value={results.pipeline_b.ndcg_1} max={100} format="percent" />
+                                    <MetricBar label="NDCG@5" value={results.pipeline_b.ndcg_5} max={100} format="percent" />
+                                    <MetricBar label="NDCG@10" value={results.pipeline_b.ndcg_10} max={100} format="percent" />
+                                </div>
+
+                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Mean Average Precision</div>
+                                <div className="flex flex-col gap-3">
+                                    <MetricBar label="MAP@1" value={results.pipeline_b.map_1} max={100} format="percent" />
+                                    <MetricBar label="MAP@5" value={results.pipeline_b.map_5} max={100} format="percent" />
+                                    <MetricBar label="MAP@10" value={results.pipeline_b.map_10} max={100} format="percent" />
+                                </div>
+
+                                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1">Relevance & Efficiency</div>
+                                <div className="flex flex-col gap-3">
                                     <MetricBar label="MRR@10 (Top Relevance)" value={results.pipeline_b.mrr_10} max={100} format="percent" />
-                                    <MetricBar label="Avg End-to-End Latency" value={results.pipeline_b.latency_ms} max={3000} format="ms" />
+                                    <MetricBar label="Avg Reranking Latency" value={results.pipeline_b.latency_ms} max={3000} format="ms" />
                                 </div>
                             </div>
                         </div>
                     </div>
+
                 )}
 
             </div>
