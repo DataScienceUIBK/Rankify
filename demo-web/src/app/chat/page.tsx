@@ -676,10 +676,10 @@ export default function ChatPage() {
                                 {m.role !== "user" && <div className="w-7 h-7 shrink-0 rounded-lg bg-indigo-100 flex items-center justify-center mt-1"><Layers className="w-4 h-4 text-indigo-600" /></div>}
                                 <div className={`flex flex-col gap-2 ${m.role === "user" ? "items-end max-w-[75%]" : "items-start w-full"}`}>
                                     {m.role !== "user" && m.pipelineData && <div className="w-full"><PipelineViz msg={m} cfg={cfg} /></div>}
-                                    {(m.content || (loading && m.role === "assistant") || m.contentRetrieved || m.contentReranked) && (
+                                    {(m.content || (loading && m.role === "assistant" && cfg.pipelineMode === "rag") || m.contentRetrieved || m.contentReranked) && (
                                         <div className="w-full">
-                                            {(m.contentRetrieved !== undefined || m.contentReranked !== undefined) ? (
-                                                <div className="flex flex-col md:flex-row gap-4 w-full">
+                                            {((m.contentRetrieved !== undefined && m.contentRetrieved !== "") || (m.contentReranked !== undefined && m.contentReranked !== "") || (loading && m.role === "assistant" && cfg.pipelineMode === "rag" && (m.contentRetrieved !== undefined || m.contentReranked !== undefined))) ? (
+                                                <div className="flex flex-col md:flex-row gap-4 w-full mt-2">
                                                     <div className="flex-1 bg-white border border-slate-200 text-slate-800 rounded-2xl p-4 text-sm leading-relaxed shadow-sm">
                                                         <div className="font-bold text-xs text-emerald-700 mb-2 border-b border-emerald-100 pb-2 flex items-center gap-1.5"><Search className="w-3.5 h-3.5" /> Answer (Retrieved Docs)</div>
                                                         <div className="whitespace-pre-wrap">{m.contentRetrieved || <span className="flex gap-1"><span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" /><span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:0.1s]" /><span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:0.2s]" /></span>}</div>
@@ -690,7 +690,7 @@ export default function ChatPage() {
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <div className={`px-4 py-3 text-sm leading-relaxed rounded-2xl shadow-sm whitespace-pre-wrap ${m.role === "user" ? "bg-slate-900 text-white rounded-br-sm inline-block" : "bg-white border border-slate-200 text-slate-800 rounded-bl-sm"}`}>
+                                                <div className={`px-4 py-3 mt-2 text-sm leading-relaxed rounded-2xl shadow-sm whitespace-pre-wrap ${m.role === "user" ? "bg-slate-900 text-white rounded-br-sm inline-block" : "bg-white border border-slate-200 text-slate-800 rounded-bl-sm inline-block"}`}>
                                                     {m.content || <span className="flex gap-1"><span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce" /><span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:0.1s]" /><span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-bounce [animation-delay:0.2s]" /></span>}
                                                 </div>
                                             )}
