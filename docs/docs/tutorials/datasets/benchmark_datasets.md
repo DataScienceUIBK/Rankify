@@ -23,7 +23,7 @@ Rankify provides easy access to standard QA benchmark datasets.
 from rankify.dataset.dataset import Dataset
 
 # List all available datasets
-Dataset.avaiable_dataset()
+Dataset.available_dataset()
 
 # Load NQ with BM25 retrieval
 dataset = Dataset(

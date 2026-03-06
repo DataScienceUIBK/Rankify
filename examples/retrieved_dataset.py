@@ -2,7 +2,7 @@ import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 from rankify.dataset.dataset import Dataset ,Document, Context, Question,Answer
 from rankify.metrics.metrics import Metrics
-#Dataset.avaiable_dataset()
+#Dataset.available_dataset()
 
 
 datasets = ["web_questions-test"]#, "ChroniclingAmericaQA-test" , "ArchivialQA-test"]#["nq-dev", "nq-test" , "squad1-test", "trivia-dev", "trivia-test", "webq-test", "squad1-dev" ] #

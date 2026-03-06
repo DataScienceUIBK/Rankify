@@ -203,7 +203,7 @@ To see all available datasets:
 from rankify.dataset.dataset import Dataset 
 
 # Display available datasets
-Dataset.avaiable_dataset()
+Dataset.available_dataset()
 ```
 
 **BM25 Retriever**

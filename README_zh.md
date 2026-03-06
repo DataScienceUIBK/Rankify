@@ -223,7 +223,7 @@ rm -rf ~/.cache/torch_extensions/*
 from rankify.dataset.dataset import Dataset 
 
 # 显示可用数据集
-Dataset.avaiable_dataset()
+Dataset.available_dataset()
 ```
 
 

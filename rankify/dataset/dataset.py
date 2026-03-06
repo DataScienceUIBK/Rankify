@@ -657,7 +657,7 @@ class Dataset:
 
     
     @staticmethod
-    def avaiable_dataset() -> None:
+    def available_dataset() -> None:
         """
         Prints information about available datasets.
 
