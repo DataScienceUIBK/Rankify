@@ -657,7 +657,7 @@ class Dataset:
 
     
     @staticmethod
-    def avaiable_dataset() -> None:
+    def available_dataset(file=None) -> None:
         """
         Prints information about available datasets.
 
@@ -666,7 +666,7 @@ class Dataset:
             Dataset.available_dataset()
             ```
         """
-        get_datasets_info()
+        get_datasets_info(file=file)
 
 
 

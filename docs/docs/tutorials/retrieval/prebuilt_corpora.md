@@ -63,7 +63,7 @@ For benchmarking, Rankify provides pre-retrieved datasets on Hugging Face:
 from rankify.dataset.dataset import Dataset
 
 # List available datasets
-Dataset.avaiable_dataset()
+Dataset.available_dataset()
 
 # Download a pre-retrieved dataset
 dataset = Dataset(
