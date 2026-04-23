@@ -1154,6 +1154,30 @@ model = Reranking(method='vicuna_reranker', model_name='rank_vicuna_7b_v1')
 
 # Zephyr Reranker
 model = Reranking(method='zephyr_reranker', model_name='rank_zephyr_7b_v1_full')
+
+# DuoT5 (pairwise T5-based reranker)
+model = Reranking(method='duot5', model_name='duot5-base-msmarco')
+
+# RankLLaMA (LLaMA-based passage reranker)
+model = Reranking(method='rankllama', model_name='rankllama-v1-7b-lora-passage')
+
+# DeAR (Decoder-only Autoregressive Reranker)
+model = Reranking(method='dear_reranker', model_name='dear-3b-reranker-ce-v1')
+
+# TART (Task-Aware Reranker with Instructions)
+model = Reranking(method='tart', model_name='tart-full-flan-t5-xl')
+
+# PRP (Pairwise Ranking Prompting) — local LLM
+model = Reranking(method='prp', model_name='llamav3.1-8b')
+
+# PRP — API-based LLM
+model = Reranking(method='prp-api', model_name='gpt-4', api_key="gpt-api-key")
+
+# RankGemma (Gemma-based listwise reranker)
+model = Reranking(method='rankgemma', model_name='gemma-2-2b')
+
+# RankMistral (Mistral-based listwise reranker)
+model = Reranking(method='rankmistral', model_name='mistral-7b')
 ```
 ---
 
@@ -1453,7 +1477,13 @@ print("RAGAS (OpenAI):", {k: v for k, v in scores_openai.items() if k.startswith
 - 🕒 **coCondenser**   
 - 🕒 **Spar** 
 - 🕒 **Dragon** 
-- 🕒 **Hybrid** 
+- 🕒 **Hybrid**
+- ✅ **TAS-B**
+- ✅ **UniCOIL**
+- ✅ **SPLADE-v2**
+- ✅ **OpenAI Embedding Retriever**
+- ✅ **Cohere Embedding Retriever**
+- ✅ **Voyage AI Retriever**
 ---
 
 ### **2️⃣ Rerankers**  
@@ -1483,9 +1513,18 @@ print("RAGAS (OpenAI):", {k: v for k, v in scores_openai.items() if k.startswith
 - ✅ **[LLM2VEC Reranker](https://arxiv.org/abs/2404.05961)**
 - ✅ **[ECHO Reranker](https://arxiv.org/abs/2402.10866)**
 - ✅ **[Incontext Reranker](https://arxiv.org/abs/2410.02642)**
+- ✅ **[DuoT5](https://arxiv.org/abs/2101.05667)**
+- ✅ **[RankLLaMA](https://arxiv.org/abs/2310.08319)**
+- ✅ **[DeAR](https://arxiv.org/abs/2410.23089)**
 - 🕒 **DynRank**
 - 🕒 **ASRank**
-- 🕒 **RankLlama**
+- ✅ **PRP (Pairwise Ranking Prompting)**
+- ✅ **RankMistral**
+- ✅ **RankGemma**
+- 🕒 **SetRank**
+- 🕒 **Cohere Rerank API**
+- ✅ **TART**
+- 🕒 **PolyEncoder**
 
 ---
 
@@ -1513,7 +1552,7 @@ print("RAGAS (OpenAI):", {k: v for k, v in scores_openai.items() if k.startswith
 - 🔥 **Unified Framework**: Combines **retrieval**, **re-ranking**, and **retrieval-augmented generation (RAG)** into a single modular toolkit.  
 - 📚 **Rich Dataset Support**: Includes **40+ benchmark datasets** with **pre-retrieved documents** for seamless experimentation.  
 - 🧲 **Diverse Retrieval Methods**: Supports **BM25, DPR, ANCE, BPR, ColBERT, BGE, Contriever, SFR, E5, GritLM, M2, Nomic, Instructor, RaDeR, ReasonIR, BGE-Reasoner and  ReasonEmbed** for flexible retrieval strategies.  
-- 🎯 **Powerful Re-Ranking**: Implements **24 advanced models** with **41 sub-methods** to optimize ranking performance.  
+- 🎯 **Powerful Re-Ranking**: Implements **28 advanced models** with **44 sub-methods** to optimize ranking performance.  
 - 🏗️ **Prebuilt Indices**: Provides **Wikipedia and MS MARCO** corpora, eliminating indexing overhead and speeding up retrieval.  
 - 🔮 **Seamless RAG Integration**: Works with backends like **Hugging Face, OpenAI, vLLM, LiteLLM** inferening models like **GPT, LLAMA, T5, and Fusion-in-Decoder (FiD)** for multiple **retrieval-augmented generation** methods.  
 - 🛠 **Extensible & Modular**: Easily integrates **custom datasets, retrievers, ranking models, and RAG pipelines**.  

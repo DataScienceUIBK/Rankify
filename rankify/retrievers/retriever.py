@@ -15,6 +15,9 @@ from .diver_bm25_retriever import DiverBM25Retriever
 from .reasonir_retriever import ReasonIRRetriever
 from .reasonembed_retriever import ReasonEmbedRetriever
 from .bge_reasoner_retriever import BgeReasonerRetriever
+from .unicoil_retriever import UniCOILRetriever
+from .splade_v2_retriever import SpladeV2Retriever
+from .api_embedding_retriever import APIEmbeddingRetriever
 
 # Method mapping - UPDATED WITH PROPER ANCE SUPPORT
 METHOD_MAP: Dict[str, Type[BaseRetriever]] = {
@@ -33,6 +36,12 @@ METHOD_MAP: Dict[str, Type[BaseRetriever]] = {
     "reasonir": ReasonIRRetriever,
     "reason-embed": ReasonEmbedRetriever,
     "bge-reasoner-embed": BgeReasonerRetriever,
+    "unicoil": UniCOILRetriever,
+    "unicoil-noexp": UniCOILRetriever,
+    "splade-v2": SpladeV2Retriever,
+    "openai-embedding": APIEmbeddingRetriever,
+    "cohere-embedding": APIEmbeddingRetriever,
+    "voyage-embedding": APIEmbeddingRetriever,
 }
 
 class Retriever:
@@ -109,6 +118,12 @@ class Retriever:
             "reasonir",
             "reason-embed",
             "bge-reasoner-embed",
+            "unicoil",
+            "unicoil-noexp",
+            "splade-v2",
+            "openai-embedding",
+            "cohere-embedding",
+            "voyage-embedding",
         }
         # No index retrievers do NOT use index_type or index_folder
             # They require corpus_path + model_id via kwargs

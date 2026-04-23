@@ -37,6 +37,10 @@ from rankify.models.echorank import EchoRankReranker
 from rankify.models.incontext_reranker import InContextReranker
 from rankify.models.rankllama_reranker import RankLLaMAReranker
 from rankify.models.dear_reranker import DeARReranker
+from rankify.models.prp_reranker import PRPReranker
+from rankify.models.tart_reranker import TARTReranker
+from rankify.models.rankgemma_reranker import RankGemmaReranker
+from rankify.models.rankmistral_reranker import RankMistralReranker
 
 
 # Conditionally import FirstModelReranker only if vLLM is available
@@ -77,6 +81,11 @@ METHOD_MAP ={
     'rankllama': RankLLaMAReranker,
     'dear_reranker': DeARReranker,
     'incontext_reranker': InContextReranker,
+    'prp': PRPReranker,
+    'prp-api': PRPReranker,
+    'tart': TARTReranker,
+    'rankgemma': RankGemmaReranker,
+    'rankmistral': RankMistralReranker,
 }
 
 
