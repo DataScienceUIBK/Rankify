@@ -1,6 +1,17 @@
-from rankify.utils.api.openaiclient import OpenaiClient
-from rankify.utils.api.litellmclient import LitellmClient
-from rankify.utils.api.claudeclient import ClaudeClient
+try:
+    from rankify.utils.api.openaiclient import OpenaiClient
+except ImportError:
+    OpenaiClient = None  # type: ignore[assignment]
+
+try:
+    from rankify.utils.api.litellmclient import LitellmClient
+except ImportError:
+    LitellmClient = None  # type: ignore[assignment]
+
+try:
+    from rankify.utils.api.claudeclient import ClaudeClient
+except ImportError:
+    ClaudeClient = None  # type: ignore[assignment]
 
 HF_PRE_DEFIND_MODELS ={
     'upr':{
@@ -224,6 +235,11 @@ HF_PRE_DEFIND_MODELS ={
         'twolar-xl':"Dundalia/TWOLAR-xl",
         'twolar-large':"Dundalia/TWOLAR-large"
     },
+    'duot5': {
+        'duot5-base-msmarco': 'castorini/duot5-base-msmarco',
+        'duot5-3b-msmarco': 'castorini/duot5-3b-msmarco',
+        'duot5-large-msmarco': 'castorini/duot5-large-msmarco-10k',
+    },
     'echorank':{
         'flan-t5-large' : 'google/flan-t5-large',
         'flan-t5-xl' : 'google/flan-t5-xl'
@@ -301,6 +317,9 @@ PREDICTION_TOKENS = {
     "unicamp-dl/monoptt5-base": ["▁Não", "▁Sim"],
     "unicamp-dl/monoptt5-large": ["▁Não", "▁Sim"],
     "unicamp-dl/monoptt5-3b": ["▁Não", "▁Sim"],
+    "castorini/duot5-base-msmarco": ["▁false", "▁true"],
+    "castorini/duot5-3b-msmarco": ["▁false", "▁true"],
+    "castorini/duot5-large-msmarco-10k": ["▁false", "▁true"],
 }
 
 INDEX_TYPE = {
