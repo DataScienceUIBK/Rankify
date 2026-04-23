@@ -1,7 +1,7 @@
 """
-Unit tests for the DuoT5 pairwise reranker.
+Unit tests for Rankify rerankers: DuoT5, RankLLaMA, and DeAR.
 
-These tests mock the underlying T5 model so they run fast without
+These tests mock the underlying model objects so they run fast without
 requiring any GPU or network access.
 """
 
@@ -359,6 +359,300 @@ class TestDuoT5Registration(unittest.TestCase):
         except ImportError as exc:
             self.skipTest(f"Optional dependency not installed: {exc}")
         self.assertIs(METHOD_MAP["duot5"], DuoT5)
+
+
+# ---------------------------------------------------------------------------
+# Helpers for cross-encoder style rerankers (RankLLaMA & DeAR)
+# ---------------------------------------------------------------------------
+
+def _make_cross_encoder_tokenizer():
+    """Return a mock tokenizer for cross-encoder style models."""
+    tok = MagicMock()
+    tok.pad_token = None
+    tok.eos_token = "</s>"
+
+    def _call_side_effect(q_batch, d_batch, **kwargs):
+        batch = len(q_batch) if isinstance(q_batch, list) else 1
+        ids = torch.zeros(batch, 8, dtype=torch.long)
+        mask = torch.ones(batch, 8, dtype=torch.long)
+        result = MagicMock()
+        result.__iter__ = lambda self: iter([])
+        result.items.return_value = [("input_ids", ids), ("attention_mask", mask)]
+        result.to = lambda device: result
+        result.__getitem__ = lambda self, k: ids if k == "input_ids" else mask
+        return result
+
+    tok.side_effect = _call_side_effect
+    return tok
+
+
+def _make_cross_encoder_model(score_value=1.0):
+    """Return a mock AutoModelForSequenceClassification."""
+    model = MagicMock()
+
+    def _forward(**kwargs):
+        input_ids = kwargs.get("input_ids", None)
+        if input_ids is not None:
+            batch = input_ids.shape[0]
+        else:
+            batch = 1
+        out = MagicMock()
+        out.logits = torch.full((batch, 1), score_value)
+        return out
+
+    model.side_effect = _forward
+    model.eval.return_value = model
+    model.to.return_value = model
+    model.device = torch.device("cpu")
+    return model
+
+
+# ---------------------------------------------------------------------------
+# RankLLaMA tests
+# ---------------------------------------------------------------------------
+
+class TestRankLLaMAReranker(unittest.TestCase):
+    """Tests for the RankLLaMAReranker using mocked PEFT and HuggingFace objects."""
+
+    @staticmethod
+    def _make_document():
+        question = Question("When did Thomas Edison invent the light bulb?")
+        answers = Answer(["1879"])
+        contexts = [
+            Context(text="Lightning strike at Seoul National University", id=1),
+            Context(text="Thomas Edison invented the light bulb in 1879", id=2),
+            Context(text="Coffee is good for diet", id=3),
+        ]
+        return Document(question=question, answers=answers, contexts=contexts)
+
+    def _build_reranker(self, score_value=1.0):
+        """Build a RankLLaMAReranker with all heavy I/O mocked out."""
+        from rankify.models.rankllama_reranker import RankLLaMAReranker
+
+        mock_tok = _make_cross_encoder_tokenizer()
+        mock_mdl = _make_cross_encoder_model(score_value)
+
+        reranker = RankLLaMAReranker.__new__(RankLLaMAReranker)
+        reranker.method = "rankllama"
+        reranker.model_name = "castorini/rankllama-v1-7b-lora-passage"
+        reranker.device = "cpu"
+        reranker.batch_size = 8
+        reranker.max_length = 512
+        reranker.tokenizer = mock_tok
+        reranker.model = mock_mdl
+        return reranker
+
+    def test_rank_returns_all_contexts(self):
+        reranker = self._build_reranker()
+        doc = self._make_document()
+        reranker.rank([doc])
+        self.assertEqual(len(doc.reorder_contexts), len(doc.contexts))
+
+    def test_rank_preserves_context_texts(self):
+        reranker = self._build_reranker()
+        doc = self._make_document()
+        original_texts = {ctx.text for ctx in doc.contexts}
+        reranker.rank([doc])
+        self.assertEqual(original_texts, {ctx.text for ctx in doc.reorder_contexts})
+
+    def test_rank_assigns_scores(self):
+        reranker = self._build_reranker()
+        doc = self._make_document()
+        reranker.rank([doc])
+        for ctx in doc.reorder_contexts:
+            self.assertIsInstance(ctx.score, (int, float))
+
+    def test_rank_scores_descending(self):
+        reranker = self._build_reranker()
+        doc = self._make_document()
+        reranker.rank([doc])
+        scores = [ctx.score for ctx in doc.reorder_contexts]
+        self.assertEqual(scores, sorted(scores, reverse=True))
+
+    def test_rank_does_not_mutate_original_contexts(self):
+        reranker = self._build_reranker()
+        doc = self._make_document()
+        original_texts = [ctx.text for ctx in doc.contexts]
+        reranker.rank([doc])
+        self.assertEqual([ctx.text for ctx in doc.contexts], original_texts)
+
+    def test_rank_includes_title_in_doc_string(self):
+        """Contexts with a title should produce 'document: <title> <text>' strings."""
+        reranker = self._build_reranker()
+        question = Question("What is a camelid?")
+        contexts = [
+            Context(text="The llama is a domesticated South American camelid.", title="Llama", id=0),
+        ]
+        doc = Document(question=question, answers=Answer([""]), contexts=contexts)
+
+        captured = []
+
+        def _capturing_score(q_batch, d_batch):
+            captured.extend(d_batch)
+            return [1.0] * len(q_batch)
+
+        reranker._score_batched = _capturing_score
+        reranker.rank([doc])
+
+        self.assertEqual(len(captured), 1)
+        self.assertIn("Llama", captured[0])
+        self.assertIn("camelid", captured[0])
+
+    def test_rankllama_in_hf_pre_defind_models(self):
+        from rankify.utils.pre_defind_models import HF_PRE_DEFIND_MODELS
+
+        self.assertIn("rankllama", HF_PRE_DEFIND_MODELS)
+        self.assertIn(
+            "rankllama-v1-7b-lora-passage",
+            HF_PRE_DEFIND_MODELS["rankllama"],
+        )
+
+    def test_rankllama_in_method_map(self):
+        try:
+            from rankify.utils.pre_defined_methods import METHOD_MAP
+        except ImportError as exc:
+            self.skipTest(f"Optional dependency not installed: {exc}")
+        self.assertIn("rankllama", METHOD_MAP)
+
+    def test_rankllama_raises_without_peft(self):
+        """RankLLaMAReranker.__init__ should raise ImportError when peft is absent."""
+        import rankify.models.rankllama_reranker as module
+
+        orig = module.PEFT_AVAILABLE
+        module.PEFT_AVAILABLE = False
+        try:
+            with self.assertRaises(ImportError):
+                module.RankLLaMAReranker(
+                    method="rankllama",
+                    model_name="castorini/rankllama-v1-7b-lora-passage",
+                )
+        finally:
+            module.PEFT_AVAILABLE = orig
+
+
+# ---------------------------------------------------------------------------
+# DeAR Reranker tests
+# ---------------------------------------------------------------------------
+
+class TestDeARReranker(unittest.TestCase):
+    """Tests for the DeARReranker using mocked HuggingFace objects."""
+
+    @staticmethod
+    def _make_document():
+        question = Question("When did Thomas Edison invent the light bulb?")
+        answers = Answer(["1879"])
+        contexts = [
+            Context(text="Lightning strike at Seoul National University", id=1),
+            Context(text="Thomas Edison invented the light bulb in 1879", id=2),
+            Context(text="Coffee is good for diet", id=3),
+        ]
+        return Document(question=question, answers=answers, contexts=contexts)
+
+    def _build_reranker(self, score_value=1.0):
+        """Build a DeARReranker with all heavy I/O mocked out."""
+        from rankify.models.dear_reranker import DeARReranker
+
+        mock_tok = _make_cross_encoder_tokenizer()
+        mock_mdl = _make_cross_encoder_model(score_value)
+
+        reranker = DeARReranker.__new__(DeARReranker)
+        reranker.method = "dear_reranker"
+        reranker.model_name = "abdoelsayed/dear-3b-reranker-ce-v1"
+        reranker.device = "cpu"
+        reranker.batch_size = 32
+        reranker.max_length = 228
+        reranker.tokenizer = mock_tok
+        reranker.model = mock_mdl
+        return reranker
+
+    def test_rank_returns_all_contexts(self):
+        reranker = self._build_reranker()
+        doc = self._make_document()
+        reranker.rank([doc])
+        self.assertEqual(len(doc.reorder_contexts), len(doc.contexts))
+
+    def test_rank_preserves_context_texts(self):
+        reranker = self._build_reranker()
+        doc = self._make_document()
+        original_texts = {ctx.text for ctx in doc.contexts}
+        reranker.rank([doc])
+        self.assertEqual(original_texts, {ctx.text for ctx in doc.reorder_contexts})
+
+    def test_rank_assigns_scores(self):
+        reranker = self._build_reranker()
+        doc = self._make_document()
+        reranker.rank([doc])
+        for ctx in doc.reorder_contexts:
+            self.assertIsInstance(ctx.score, (int, float))
+
+    def test_rank_scores_descending(self):
+        reranker = self._build_reranker()
+        doc = self._make_document()
+        reranker.rank([doc])
+        scores = [ctx.score for ctx in doc.reorder_contexts]
+        self.assertEqual(scores, sorted(scores, reverse=True))
+
+    def test_rank_does_not_mutate_original_contexts(self):
+        reranker = self._build_reranker()
+        doc = self._make_document()
+        original_texts = [ctx.text for ctx in doc.contexts]
+        reranker.rank([doc])
+        self.assertEqual([ctx.text for ctx in doc.contexts], original_texts)
+
+    def test_query_format(self):
+        """Document strings sent to the model must start with 'document:'."""
+        reranker = self._build_reranker()
+        doc = self._make_document()
+
+        captured_docs = []
+
+        def _capturing_score(q_batch, d_batch):
+            captured_docs.extend(d_batch)
+            return [1.0] * len(q_batch)
+
+        reranker._score_batched = _capturing_score
+        reranker.rank([doc])
+
+        for d in captured_docs:
+            self.assertTrue(
+                d.startswith("document:"),
+                f"Expected 'document:' prefix, got: {d!r}",
+            )
+
+    def test_rank_multiple_documents(self):
+        reranker = self._build_reranker()
+        docs = [self._make_document(), self._make_document()]
+        reranker.rank(docs)
+        for doc in docs:
+            self.assertEqual(len(doc.reorder_contexts), len(doc.contexts))
+
+    def test_dear_in_hf_pre_defind_models(self):
+        from rankify.utils.pre_defind_models import HF_PRE_DEFIND_MODELS
+
+        self.assertIn("dear_reranker", HF_PRE_DEFIND_MODELS)
+        self.assertIn(
+            "dear-3b-reranker-ce-v1",
+            HF_PRE_DEFIND_MODELS["dear_reranker"],
+        )
+        self.assertEqual(
+            HF_PRE_DEFIND_MODELS["dear_reranker"]["dear-3b-reranker-ce-v1"],
+            "abdoelsayed/dear-3b-reranker-ce-v1",
+        )
+
+    def test_dear_in_method_map(self):
+        try:
+            from rankify.utils.pre_defined_methods import METHOD_MAP
+        except ImportError as exc:
+            self.skipTest(f"Optional dependency not installed: {exc}")
+        self.assertIn("dear_reranker", METHOD_MAP)
+
+    def test_method_map_points_to_dear_class(self):
+        from rankify.models.dear_reranker import DeARReranker
+        try:
+            from rankify.utils.pre_defined_methods import METHOD_MAP
+        except ImportError as exc:
+            self.skipTest(f"Optional dependency not installed: {exc}")
+        self.assertIs(METHOD_MAP["dear_reranker"], DeARReranker)
 
 
 if __name__ == "__main__":

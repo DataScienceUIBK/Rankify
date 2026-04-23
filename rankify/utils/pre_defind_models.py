@@ -240,6 +240,15 @@ HF_PRE_DEFIND_MODELS ={
         'duot5-3b-msmarco': 'castorini/duot5-3b-msmarco',
         'duot5-large-msmarco': 'castorini/duot5-large-msmarco-10k',
     },
+    'rankllama': {
+        'rankllama-v1-7b-lora-passage': 'castorini/rankllama-v1-7b-lora-passage',
+    },
+    'dear_reranker': {
+        'dear-3b-reranker-ce-v1': 'abdoelsayed/dear-3b-reranker-ce-v1',
+        'dear-3b-reranker-ranknet-v1': 'abdoelsayed/dear-3b-reranker-ranknet-v1',
+        'dear-3b-reranker-ce-lora-v1': 'abdoelsayed/dear-3b-reranker-ce-lora-v1',
+        'dear-8b-reranker-ce-v1': 'abdoelsayed/dear-8b-reranker-ce-v1',
+    },
     'echorank':{
         'flan-t5-large' : 'google/flan-t5-large',
         'flan-t5-xl' : 'google/flan-t5-xl'
