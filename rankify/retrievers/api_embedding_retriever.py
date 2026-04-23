@@ -243,7 +243,7 @@ class APIEmbeddingRetriever(BaseRetriever):
 
     def _build_faiss_index(self, emb: np.ndarray) -> "faiss.Index":
         dim = emb.shape[1]
-        # L2-normalise for cosine similarity via inner product
+        # L2-normalize for cosine similarity via inner product
         norms = np.linalg.norm(emb, axis=1, keepdims=True)
         norms = np.where(norms == 0, 1.0, norms)
         emb_norm = (emb / norms).astype(np.float32)
@@ -272,7 +272,7 @@ class APIEmbeddingRetriever(BaseRetriever):
         queries = [d.question.question for d in documents]
         query_emb = self._embed(queries, input_type="query")
 
-        # L2-normalise for inner-product cosine search
+        # L2-normalize for inner-product cosine search
         norms = np.linalg.norm(query_emb, axis=1, keepdims=True)
         norms = np.where(norms == 0, 1.0, norms)
         query_emb_norm = (query_emb / norms).astype(np.float32)
