@@ -190,6 +190,12 @@ class DiverDenseRetriever(BaseRetriever):
             self.tokenizer = AutoTokenizer.from_pretrained(checkpoint)
             self.model = AutoModel.from_pretrained(checkpoint).to(self.device).eval()
 
+        # TAS-B: DistilBERT dot-product model trained with Topic-Aware Sampling
+        elif self.model_id == "tas-b":
+            checkpoint = self.checkpoint or 'sebastian-hofstaetter/distilbert-dot-tas_b-b256-msmarco'
+            self.tokenizer = AutoTokenizer.from_pretrained(checkpoint)
+            self.model = AutoModel.from_pretrained(checkpoint).to(self.device).eval()
+
         # GritLM
         elif self.model_id == "grit":
             if not GRITLM_AVAILABLE:
@@ -201,7 +207,7 @@ class DiverDenseRetriever(BaseRetriever):
             raise ValueError(f"The model {self.model_id} is not supported")
         
         # Handle device placement for models that don't auto-map
-        if hasattr(self.model, "to") and self.model_id not in ["grit", "sf", "e5", "rader"]: 
+        if hasattr(self.model, "to") and self.model_id not in ["grit", "sf", "e5", "rader"]:
             self.model = self.model.to(self.device)
 
     def _load_corpus(self):
@@ -304,6 +310,26 @@ class DiverDenseRetriever(BaseRetriever):
                 all_embeddings.append(embeddings.cpu().numpy())
                 
         return np.vstack(all_embeddings)
+
+    def _encode_tasb(self, texts, max_length):
+        """TAS-B: CLS-token encoding with L2 normalisation and dot-product scoring."""
+        all_embeddings = []
+        batch_size = self.encode_batch_size
+
+        for i in tqdm(range(0, len(texts), batch_size), desc="Encoding TAS-B"):
+            batch_texts = texts[i : i + batch_size]
+            inputs = self.tokenizer(
+                batch_texts, padding=True, truncation=True,
+                max_length=max_length, return_tensors="pt"
+            )
+            inputs = {k: v.to(self.device) for k, v in inputs.items()}
+            with torch.no_grad():
+                outputs = self.model(**inputs)
+                embeddings = outputs.last_hidden_state[:, 0, :]  # CLS token
+                embeddings = F.normalize(embeddings, p=2, dim=1)
+                all_embeddings.append(embeddings.cpu().numpy())
+
+        return np.vstack(all_embeddings)
     
     def _load_or_build_doc_embeddings(self):
         cache_file = self._cache_file()
@@ -335,7 +361,10 @@ class DiverDenseRetriever(BaseRetriever):
             
         elif self.model_id == "contriever":
             doc_emb = self._encode_contriever(docs, self.doc_max_length)
-            
+
+        elif self.model_id == "tas-b":
+            doc_emb = self._encode_tasb(docs, self.doc_max_length)
+
         elif self.model_id == "grit":
             doc_emb = self.model.encode(docs, instruction=self.instruction_document, batch_size=self.encode_batch_size, max_length=self.doc_max_length)
             
@@ -377,7 +406,10 @@ class DiverDenseRetriever(BaseRetriever):
             
         elif self.model_id == "contriever":
             return self._encode_contriever(queries, self.query_max_length)
-            
+
+        elif self.model_id == "tas-b":
+            return self._encode_tasb(queries, self.query_max_length)
+
         elif self.model_id == "grit":
             q_instr = self.instruction_query.format(task=self.task) if "{task}" in self.instruction_query else self.instruction_query
             return self.model.encode(queries, instruction=q_instr, batch_size=self.encode_batch_size, max_length=self.query_max_length)

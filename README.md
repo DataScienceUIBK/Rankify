@@ -1163,6 +1163,21 @@ model = Reranking(method='rankllama', model_name='rankllama-v1-7b-lora-passage')
 
 # DeAR (Decoder-only Autoregressive Reranker)
 model = Reranking(method='dear_reranker', model_name='dear-3b-reranker-ce-v1')
+
+# TART (Task-Aware Reranker with Instructions)
+model = Reranking(method='tart', model_name='tart-full-flan-t5-xl')
+
+# PRP (Pairwise Ranking Prompting) — local LLM
+model = Reranking(method='prp', model_name='llamav3.1-8b')
+
+# PRP — API-based LLM
+model = Reranking(method='prp-api', model_name='gpt-4', api_key="gpt-api-key")
+
+# RankGemma (Gemma-based listwise reranker)
+model = Reranking(method='rankgemma', model_name='gemma-2-2b')
+
+# RankMistral (Mistral-based listwise reranker)
+model = Reranking(method='rankmistral', model_name='mistral-7b')
 ```
 ---
 
@@ -1463,12 +1478,12 @@ print("RAGAS (OpenAI):", {k: v for k, v in scores_openai.items() if k.startswith
 - 🕒 **Spar** 
 - 🕒 **Dragon** 
 - 🕒 **Hybrid**
-- 🕒 **TAS-B**
-- 🕒 **UniCOIL**
-- 🕒 **SPLADE-v2**
-- 🕒 **OpenAI Embedding Retriever**
-- 🕒 **Cohere Embedding Retriever**
-- 🕒 **Voyage AI Retriever**
+- ✅ **TAS-B**
+- ✅ **UniCOIL**
+- ✅ **SPLADE-v2**
+- ✅ **OpenAI Embedding Retriever**
+- ✅ **Cohere Embedding Retriever**
+- ✅ **Voyage AI Retriever**
 ---
 
 ### **2️⃣ Rerankers**  
@@ -1503,12 +1518,12 @@ print("RAGAS (OpenAI):", {k: v for k, v in scores_openai.items() if k.startswith
 - ✅ **[DeAR](https://arxiv.org/abs/2410.23089)**
 - 🕒 **DynRank**
 - 🕒 **ASRank**
-- 🕒 **PRP (Pairwise Ranking Prompting)**
-- 🕒 **RankMistral**
-- 🕒 **RankGemma**
+- ✅ **PRP (Pairwise Ranking Prompting)**
+- ✅ **RankMistral**
+- ✅ **RankGemma**
 - 🕒 **SetRank**
 - 🕒 **Cohere Rerank API**
-- 🕒 **TART**
+- ✅ **TART**
 - 🕒 **PolyEncoder**
 
 ---

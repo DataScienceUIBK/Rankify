@@ -258,7 +258,35 @@ HF_PRE_DEFIND_MODELS ={
         'llamav3.1-70b':'meta-llama/Llama-3.1-70B-Instruct',
         'Mistral-7B-Instruct-v0.2':'mistralai/Mistral-7B-Instruct-v0.2',
         
-    }
+    },
+    'tart': {
+        'tart-full-flan-t5-xl': 'facebook/tart-full-flan-t5-xl',
+        'tart-dual-flan-t5-xl': 'facebook/tart-dual-flan-t5-xl',
+    },
+    'prp': {
+        'llamav3.1-8b': 'meta-llama/Meta-Llama-3.1-8B-Instruct',
+        'llamav3.1-70b': 'meta-llama/Llama-3.1-70B-Instruct',
+        'Llama-3.2-1B': 'meta-llama/Llama-3.2-1B-Instruct',
+        'Llama-3.2-3B': 'meta-llama/Llama-3.2-3B-Instruct',
+        'Mistral-7B-Instruct-v0.3': 'mistralai/Mistral-7B-Instruct-v0.3',
+    },
+    'prp-api': {
+        'gpt-3.5': 'gpt-3.5-turbo',
+        'gpt-4': 'gpt-4o',
+        'gpt-4-mini': 'gpt-4o-mini',
+        'llamav3.1-8b': 'llamav3.1-8b',
+        'llamav3.1-70b': 'llamav3.1-70b',
+    },
+    'rankgemma': {
+        'gemma-2-2b': 'google/gemma-2-2b-it',
+        'gemma-2-9b': 'google/gemma-2-9b-it',
+        'gemma-2-27b': 'google/gemma-2-27b-it',
+    },
+    'rankmistral': {
+        'mistral-7b': 'mistralai/Mistral-7B-Instruct-v0.3',
+        'mistral-7b-v0.2': 'mistralai/Mistral-7B-Instruct-v0.2',
+        'mixtral-8x7b': 'mistralai/Mixtral-8x7B-Instruct-v0.1',
+    },
 }
 
 
