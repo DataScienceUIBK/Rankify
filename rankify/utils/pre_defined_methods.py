@@ -32,8 +32,11 @@ from rankify.models.colbert_ranker import ColBERTReranker
 from rankify.models.monobert import MonoBERT
 from rankify.models.llm2vec_reranker import LLM2VecReranker
 from rankify.models.twolar import TWOLAR
+from rankify.models.duot5 import DuoT5
 from rankify.models.echorank import EchoRankReranker
 from rankify.models.incontext_reranker import InContextReranker
+from rankify.models.rankllama_reranker import RankLLaMAReranker
+from rankify.models.dear_reranker import DeARReranker
 
 
 # Conditionally import FirstModelReranker only if vLLM is available
@@ -70,6 +73,9 @@ METHOD_MAP ={
     'llm2vec': LLM2VecReranker,
     'twolar':TWOLAR,
     'echorank':EchoRankReranker,
+    'duot5': DuoT5,
+    'rankllama': RankLLaMAReranker,
+    'dear_reranker': DeARReranker,
     'incontext_reranker': InContextReranker,
 }
 
