@@ -29,7 +29,8 @@ class PRPReranker(BaseRanking):
     Two comparison modes are available:
 
     * ``'allpairs'`` – compare every ordered pair (O(N²) LLM calls).
-    * ``'bubblesort'`` – O(N log N) bubble-sort passes; faster for large sets.
+    * ``'bubblesort'`` – O(N²) comparisons in the worst case; faster for large
+        sets when documents are partially ordered.
 
     For **local** models (``method='prp'``) the winner is decided by
     comparing the next-token logit probability of the tokens ``"A"`` and

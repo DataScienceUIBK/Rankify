@@ -177,7 +177,7 @@ class APIEmbeddingRetriever(BaseRetriever):
     def _embed_openai(self, texts: List[str], input_type: str = "document") -> np.ndarray:
         client = _openai_module.OpenAI(api_key=self.api_key)
         all_emb = []
-        for i in range(0, len(texts), self.embed_batch_size):
+        for i in tqdm(range(0, len(texts), self.embed_batch_size), desc="OpenAI embed"):
             batch = texts[i : i + self.embed_batch_size]
             response = client.embeddings.create(input=batch, model=self.model_name)
             batch_emb = [item.embedding for item in response.data]
