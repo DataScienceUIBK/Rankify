@@ -2,35 +2,101 @@
 from typing import List, Dict, Type
 from rankify.dataset.dataset import Document
 from .base_retriever import BaseRetriever
-from .bm25_retriever import BM25Retriever
-from .dense_retriever import DenseRetriever
-from .ance_retriever import ANCERetriever 
-from .bge_retriever import BGERetriever
-from .colbert_retriever import ColBERTRetriever
-from .contriever_retriever import ContrieverRetriever
-from .online_retriever import OnlineRetriever
-from .hyde_retriever import HydeRetriever
-from .diver_dense_retriever import DiverDenseRetriever
-from .diver_bm25_retriever import DiverBM25Retriever
-from .reasonir_retriever import ReasonIRRetriever
-from .reasonembed_retriever import ReasonEmbedRetriever
-from .bge_reasoner_retriever import BgeReasonerRetriever
-from .unicoil_retriever import UniCOILRetriever
-from .splade_v2_retriever import SpladeV2Retriever
-from .api_embedding_retriever import APIEmbeddingRetriever
+from .bm25s_retriever import BM25SRetriever
 
-# Method mapping - UPDATED WITH PROPER ANCE SUPPORT
-METHOD_MAP: Dict[str, Type[BaseRetriever]] = {
+try:
+    from .bm25_retriever import BM25Retriever
+except ImportError:
+    BM25Retriever = None  # type: ignore[assignment,misc]
+
+try:
+    from .dense_retriever import DenseRetriever
+except ImportError:
+    DenseRetriever = None  # type: ignore[assignment,misc]
+
+try:
+    from .ance_retriever import ANCERetriever
+except ImportError:
+    ANCERetriever = None  # type: ignore[assignment,misc]
+
+try:
+    from .bge_retriever import BGERetriever
+except ImportError:
+    BGERetriever = None  # type: ignore[assignment,misc]
+
+try:
+    from .colbert_retriever import ColBERTRetriever
+except ImportError:
+    ColBERTRetriever = None  # type: ignore[assignment,misc]
+
+try:
+    from .contriever_retriever import ContrieverRetriever
+except ImportError:
+    ContrieverRetriever = None  # type: ignore[assignment,misc]
+
+try:
+    from .online_retriever import OnlineRetriever
+except ImportError:
+    OnlineRetriever = None  # type: ignore[assignment,misc]
+
+try:
+    from .hyde_retriever import HydeRetriever
+except ImportError:
+    HydeRetriever = None  # type: ignore[assignment,misc]
+
+try:
+    from .diver_dense_retriever import DiverDenseRetriever
+except ImportError:
+    DiverDenseRetriever = None  # type: ignore[assignment,misc]
+
+try:
+    from .diver_bm25_retriever import DiverBM25Retriever
+except ImportError:
+    DiverBM25Retriever = None  # type: ignore[assignment,misc]
+
+try:
+    from .reasonir_retriever import ReasonIRRetriever
+except ImportError:
+    ReasonIRRetriever = None  # type: ignore[assignment,misc]
+
+try:
+    from .reasonembed_retriever import ReasonEmbedRetriever
+except ImportError:
+    ReasonEmbedRetriever = None  # type: ignore[assignment,misc]
+
+try:
+    from .bge_reasoner_retriever import BgeReasonerRetriever
+except ImportError:
+    BgeReasonerRetriever = None  # type: ignore[assignment,misc]
+
+try:
+    from .unicoil_retriever import UniCOILRetriever
+except ImportError:
+    UniCOILRetriever = None  # type: ignore[assignment,misc]
+
+try:
+    from .splade_v2_retriever import SpladeV2Retriever
+except ImportError:
+    SpladeV2Retriever = None  # type: ignore[assignment,misc]
+
+try:
+    from .api_embedding_retriever import APIEmbeddingRetriever
+except ImportError:
+    APIEmbeddingRetriever = None  # type: ignore[assignment,misc]
+
+# Method mapping – entries whose class could not be imported are excluded
+_CANDIDATE_MAP: Dict[str, object] = {
     "bm25": BM25Retriever,
+    "bm25s": BM25SRetriever,
     "dpr-multi": DenseRetriever,
     "dpr-single": DenseRetriever,
-    "ance-multi": ANCERetriever,   
+    "ance-multi": ANCERetriever,
     "bpr-single": DenseRetriever,
-    "bge": BGERetriever, 
-    "colbert": ColBERTRetriever, 
-    "contriever": ContrieverRetriever, 
-    "online": OnlineRetriever, 
-    "hyde": HydeRetriever, 
+    "bge": BGERetriever,
+    "colbert": ColBERTRetriever,
+    "contriever": ContrieverRetriever,
+    "online": OnlineRetriever,
+    "hyde": HydeRetriever,
     "diver-dense": DiverDenseRetriever,
     "diver-bm25": DiverBM25Retriever,
     "reasonir": ReasonIRRetriever,
@@ -42,6 +108,9 @@ METHOD_MAP: Dict[str, Type[BaseRetriever]] = {
     "openai-embedding": APIEmbeddingRetriever,
     "cohere-embedding": APIEmbeddingRetriever,
     "voyage-embedding": APIEmbeddingRetriever,
+}
+METHOD_MAP: Dict[str, Type[BaseRetriever]] = {
+    k: v for k, v in _CANDIDATE_MAP.items() if v is not None
 }
 
 class Retriever:
@@ -79,7 +148,7 @@ class Retriever:
         Initialize the retriever.
         
         Args:
-            method (str): Retrieval method ('bm25', 'dpr-multi', 'dpr-single', 'ance', 'ance-multi', 'bpr-single', etc.)
+            method (str): Retrieval method ('bm25', 'bm25s', 'dpr-multi', 'dpr-single', 'ance', 'ance-multi', 'bpr-single', etc.)
             n_docs (int): Number of documents to retrieve per query
             index_type (str): Index type ('wiki', 'msmarco') - ignored if index_folder is provided
             index_folder (str): Path to custom index folder (optional)
