@@ -1,13 +1,18 @@
 # bm25_retriever.py
 import json
 from typing import List
-from pyserini.search.lucene import LuceneSearcher
-from pyserini.eval.evaluate_dpr_retrieval import has_answers, SimpleTokenizer
 from tqdm import tqdm
 import os
 from .base_retriever import BaseRetriever
 from .index_manager import IndexManager
 from rankify.dataset.dataset import Document, Context
+
+try:
+    from pyserini.search.lucene import LuceneSearcher
+    from pyserini.eval.evaluate_dpr_retrieval import has_answers, SimpleTokenizer
+    _PYSERINI_AVAILABLE = True
+except ImportError:
+    _PYSERINI_AVAILABLE = False
 
 class BM25Retriever(BaseRetriever):
     """
@@ -17,6 +22,13 @@ class BM25Retriever(BaseRetriever):
     """
     
     def __init__(self, index_type: str = "wiki", index_folder: str = None, **kwargs):
+        if not _PYSERINI_AVAILABLE:
+            raise ImportError(
+                "pyserini is required for BM25Retriever. "
+                "Install it with: pip install pyserini  "
+                "Or use BM25SRetriever for a pure-Python alternative: "
+                "Retriever(method='bm25s', ...)"
+            )
         super().__init__(**kwargs)
         self.index_type = index_type
         self.index_folder = index_folder
@@ -48,7 +60,7 @@ class BM25Retriever(BaseRetriever):
                 fwd = json.load(f)                   # { "orig_id": 123 }
             m = {str(v): k for k, v in fwd.items()}  # ensure string keys
         return m
-    def _initialize_searcher(self) -> LuceneSearcher:
+    def _initialize_searcher(self):
         """Initialize Lucene searcher."""
         if self.index_path.startswith("wikipedia-") or "prebuilt" in self.index_path:
             return LuceneSearcher.from_prebuilt_index(self.index_path)
