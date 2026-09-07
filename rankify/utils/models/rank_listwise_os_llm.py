@@ -11,6 +11,7 @@ from vllm import LLM, SamplingParams, RequestOutput
 import copy
 import random
 import re
+import unicodedata
 from abc import ABC, abstractmethod
 from enum import Enum
 
