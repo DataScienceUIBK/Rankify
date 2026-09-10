@@ -9,11 +9,15 @@ import json
 from typing import List
 from tqdm import tqdm
 
-from gensim.corpora import Dictionary
-from gensim.models import LuceneBM25Model
-from gensim.similarities import SparseMatrixSimilarity
-from pyserini import analysis
-from pyserini.eval.evaluate_dpr_retrieval import has_answers, SimpleTokenizer
+try:
+    from gensim.corpora import Dictionary
+    from gensim.models import LuceneBM25Model
+    from gensim.similarities import SparseMatrixSimilarity
+    from pyserini import analysis
+    from pyserini.eval.evaluate_dpr_retrieval import has_answers, SimpleTokenizer
+    _DIVER_DEPS_AVAILABLE = True
+except ImportError:
+    _DIVER_DEPS_AVAILABLE = False
 
 from .base_retriever import BaseRetriever
 from rankify.dataset.dataset import Document, Context
@@ -64,6 +68,11 @@ class DiverBM25Retriever(BaseRetriever):
         b: float = 0.4,
         **kwargs,
     ):
+        if not _DIVER_DEPS_AVAILABLE:
+            raise ImportError(
+                "pyserini and gensim are required for DiverBM25Retriever. "
+                "Install them with: pip install pyserini gensim"
+            )
         super().__init__(**kwargs)
 
         if corpus_path is None:

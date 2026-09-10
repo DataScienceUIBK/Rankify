@@ -80,6 +80,9 @@ retriever = [
   # Sparse retrieval (BM25)
   "pyserini==0.43.0",
   
+  # Sparse retrieval (BM25S - pure Python, no Java dependency)
+  "bm25s>=0.2.0",
+  
   # Dense retrieval 
   "faiss-cpu==1.9.0.post1",
   "h5py==3.12.1",
