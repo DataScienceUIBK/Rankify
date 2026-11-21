@@ -147,6 +147,9 @@ HF_PRE_DEFIND_MODELS ={
         "ms-marco-TinyBERT-L-2":"cross-encoder/ms-marco-TinyBERT-L-2",
         "msmarco-MiniLM-L12-en-de-v1":"cross-encoder/msmarco-MiniLM-L12-en-de-v1",
         "msmarco-MiniLM-L6-en-de-v1":"cross-encoder/msmarco-MiniLM-L6-en-de-v1",
+        "lupe-multilingual-reranker-small":"syntriq/lupe-multilingual-reranker-small",
+        "lupe-multilingual-reranker-base":"syntriq/lupe-multilingual-reranker-base",
+        "lupe-multilingual-reranker-large":"syntriq/lupe-multilingual-reranker-large",
         
     },
     'llm_layerwise_ranker':{
